@@ -1,198 +1,228 @@
 const Graphics = {
-  flags: {
-    AR: "🇦🇷", CL: "🇨🇱", BR: "🇧🇷", FR: "🇫🇷", US: "🇺🇸",
-    SA: "🇸🇦", ES: "🇪🇸", GB: "🇬🇧", DE: "🇩🇪", NL: "🇳🇱",
-    BE: "🇧🇪", CA: "🇨🇦", MA: "🇲🇦", JP: "🇯🇵", AU: "🇦🇺"
+  countryFlags: {
+    FR: "🇫🇷", SA: "🇸🇦", US: "🇺🇸", BR: "🇧🇷", GB: "🇬🇧",
+    AR: "🇦🇷", CL: "🇨🇱", ES: "🇪🇸", DE: "🇩🇪", NL: "🇳🇱",
+    BE: "🇧🇪", MA: "🇲🇦", CA: "🇨🇦", MX: "🇲🇽", UY: "🇺🇾",
+    CO: "🇨🇴", PE: "🇵🇪", JP: "🇯🇵", AU: "🇦🇺", IT: "🇮🇹",
+    PT: "🇵🇹", SE: "🇸🇪", NO: "🇳🇴", PL: "🇵🇱", KW: "🇰🇼",
+    AE: "🇦🇪", JO: "🇯🇴", QA: "🇶🇦"
   },
 
   countryNames: {
-    AR: "Argentina", CL: "Chile", BR: "Brasil", FR: "Francia", US: "Estados Unidos",
-    SA: "Arabia Saudita", ES: "España", GB: "Reino Unido", DE: "Alemania",
-    NL: "Países Bajos", BE: "Bélgica", CA: "Canadá", MA: "Marruecos", JP: "Japón", AU: "Australia"
+    FR: "Francia", SA: "Arabia Saudita", US: "Estados Unidos", BR: "Brasil",
+    GB: "Reino Unido", AR: "Argentina", CL: "Chile", ES: "España",
+    DE: "Alemania", NL: "Países Bajos", BE: "Bélgica", MA: "Marruecos",
+    CA: "Canadá", MX: "México", UY: "Uruguay", CO: "Colombia",
+    PE: "Perú", JP: "Japón", AU: "Australia", IT: "Italia",
+    PT: "Portugal", SE: "Suecia", NO: "Noruega", PL: "Polonia"
   },
 
   getFlag(code) {
-    return this.flags[code] || "🌐";
+    return this.countryFlags[code] || "🌐";
   },
 
-  renderStarsSVG(starsCount) {
-    if (!starsCount || starsCount <= 0) return "";
-    const count = Math.min(starsCount, 6);
-    let stars = "";
-    const startX = 50 - (count - 1) * 8;
-    for (let i = 0; i < count; i++) {
-      const cx = startX + i * 16;
-      stars += `<polygon points="${cx},2 ${cx+2},6.8 ${cx+7},6.8 ${cx+3},10 ${cx+4.5},14.8 ${cx},11.8 ${cx-4.5},14.8 ${cx-3},10 ${cx-7},6.8 ${cx-2},6.8" fill="#facc15" stroke="#854d0e" stroke-width="0.8"/>`;
-    }
-    return stars;
-  },
-
+  // ESCUDO VECTORIAL DE CLUB CON ESTRELLAS MUNDIALES
   renderCrest(team, size = 56) {
     if (!team) return "";
-    if (team.logoUrl && team.logoUrl.trim() !== "") {
-      return `<img src="${team.logoUrl}" alt="${team.tag}" style="width:${size}px;height:${size}px;object-fit:contain;border-radius:8px;" />`;
+    const starsCount = team.stars || 0;
+    const starsHtml = starsCount > 0
+      ? `<div class="crest-stars" title="${starsCount} Mundial(es) RLCS">${"⭐".repeat(Math.min(starsCount, 5))}</div>`
+      : "";
+
+    if (team.logoUrl && team.logoUrl.trim().startsWith("http")) {
+      return `
+        <div class="crest-wrapper" style="width:${size}px;">
+          ${starsHtml}
+          <img src="${team.logoUrl.trim()}" alt="${team.tag}"
+            style="width:${size}px;height:${size}px;object-fit:contain;border-radius:10px;background:#0f172a;padding:3px;border:2px solid ${team.color1 || "#00a8ff"};"
+            onerror="this.style.display='none'" />
+        </div>
+      `;
     }
 
-    const starsSvg = this.renderStarsSVG(team.stars || 0);
-    const id = team.id || "";
-    let inner = "";
+    const c1 = team.color1 || "#00a8ff";
+    const c2 = team.color2 || "#ffffff";
+    const shape = team.shape || "shield";
+    const pattern = team.pattern || "solid";
+    const tag = (team.tag || "RL").slice(0, 4).toUpperCase();
+    const uid = `g_${(team.id || tag).replace(/[^a-zA-Z0-9]/g, "")}_${Math.floor(Math.random() * 9999)}`;
 
-    if (id === "kc") {
-      inner = `
-        <path d="M16,22 L50,16 L84,22 L80,62 L50,94 L20,62 Z" fill="#0055ff" stroke="#ffffff" stroke-width="4.5"/>
-        <path d="M24,28 L50,23 L76,28 L72,58 L50,84 L28,58 Z" fill="none" stroke="#38bdf8" stroke-width="2"/>
-        <text x="50" y="61" font-family="Arial Black, sans-serif" font-weight="900" font-size="26" fill="#ffffff" text-anchor="middle">KC</text>
-      `;
-    } else if (id === "vit") {
-      inner = `
-        <polygon points="50,17 85,35 85,73 50,93 15,73 15,35" fill="#111827" stroke="#eab308" stroke-width="5"/>
-        <polygon points="50,25 76,39 76,69 50,84 24,69 24,39" fill="#eab308"/>
-        <path d="M32,42 L50,68 L68,42 L58,42 L50,55 L42,42 Z" fill="#111827"/>
-      `;
-    } else if (id === "m8") {
-      inner = `
-        <polygon points="50,16 88,54 50,94 12,54" fill="#0f172a" stroke="#ec4899" stroke-width="5"/>
-        <path d="M31,68 V42 L50,58 L69,42 V68" fill="none" stroke="#ec4899" stroke-width="6.5" stroke-linejoin="round"/>
-      `;
-    } else if (id === "bds") {
-      inner = `
-        <path d="M18,22 L34,30 L50,18 L66,30 L82,22 L78,64 L50,94 L22,64 Z" fill="#e11d48" stroke="#ffffff" stroke-width="4"/>
-        <text x="50" y="65" font-family="Arial Black, sans-serif" font-weight="900" font-size="22" fill="#ffffff" text-anchor="middle">BDS</text>
-      `;
-    } else if (id === "g2") {
-      inner = `
-        <path d="M18,22 H82 L76,68 L50,94 L24,68 Z" fill="#111827" stroke="#dc2626" stroke-width="5"/>
-        <path d="M26,34 L46,46 L28,54 Z M74,34 L54,46 L72,54 Z" fill="#dc2626"/>
-        <text x="50" y="76" font-family="Arial Black, sans-serif" font-weight="900" font-size="20" fill="#ffffff" text-anchor="middle">G2</text>
-      `;
-    } else if (id === "geng") {
-      inner = `
-        <polygon points="50,17 85,34 80,74 50,94 20,74 15,34" fill="#090d16" stroke="#f59e0b" stroke-width="5"/>
-        <path d="M34,34 L42,74 M48,30 L52,78 M64,34 L58,74" stroke="#f59e0b" stroke-width="4.5" stroke-linecap="round"/>
-      `;
-    } else if (id === "fur") {
-      inner = `
-        <path d="M16,20 H84 L80,62 L50,94 L20,62 Z" fill="#09090b" stroke="#ffffff" stroke-width="4.5"/>
-        <path d="M30,34 L66,46 L34,56 L70,68" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round"/>
-      `;
-    } else if (id === "kru") {
-      inner = `
-        <polygon points="50,17 86,36 86,74 50,94 14,74 14,36" fill="#111827" stroke="#f43f5e" stroke-width="5"/>
-        <text x="50" y="63" font-family="Arial Black, sans-serif" font-weight="900" font-size="23" fill="#f43f5e" text-anchor="middle">KRÜ</text>
-      `;
-    } else if (id === "9z") {
-      inner = `
-        <path d="M18,20 H82 V58 C82,78 50,94 50,94 C50,94 18,78 18,58 Z" fill="#6d28d9" stroke="#ffffff" stroke-width="4.5"/>
-        <text x="50" y="64" font-family="Arial Black, sans-serif" font-weight="900" font-size="27" fill="#ffffff" text-anchor="middle">9Z</text>
-      `;
-    } else if (id === "lev") {
-      inner = `
-        <circle cx="50" cy="55" r="38" fill="#0369a1" stroke="#38bdf8" stroke-width="5"/>
-        <path d="M34,42 V62 C34,70 66,70 66,62 V42 M50,34 V74" fill="none" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round"/>
-      `;
-    } else if (id === "flc") {
-      inner = `
-        <path d="M16,22 L50,16 L84,22 L78,66 L50,94 L22,66 Z" fill="#15803d" stroke="#ffffff" stroke-width="4.5"/>
-        <path d="M26,40 L50,54 L74,40 L66,62 L50,74 L34,62 Z" fill="#ffffff"/>
-      `;
-    } else {
-      const c1 = team.color1 || "#00a8ff";
-      const c2 = team.color2 || "#ffffff";
-      const shape = team.shape || "shield";
-      const pattern = team.pattern || "solid";
-      const tag = (team.tag || "RL").slice(0, 4).toUpperCase();
-      const clipId = "clip_" + Math.random().toString(36).slice(2, 8);
+    let shapePath = "M50 6 L90 22 L84 68 L50 95 L16 68 L10 22 Z";
+    if (shape === "hexagon") shapePath = "M50 5 L91 28 L91 72 L50 95 L9 72 L9 28 Z";
+    else if (shape === "circle") shapePath = "M50 6 A44 44 0 1 0 50 94 A44 44 0 1 0 50 6 Z";
+    else if (shape === "diamond") shapePath = "M50 4 L94 50 L50 96 L6 50 Z";
 
-      let shapePath = `<path d="M16,20 H84 V56 C84,78 50,94 50,94 C50,94 16,78 16,56 Z"`;
-      if (shape === "hexagon") shapePath = `<polygon points="50,17 86,36 86,74 50,94 14,74 14,36"`;
-      else if (shape === "circle") shapePath = `<circle cx="50" cy="55" r="38"`;
-      else if (shape === "diamond") shapePath = `<polygon points="50,16 88,55 50,94 12,55"`;
-      else if (shape === "modern") shapePath = `<path d="M18,22 L50,16 L82,22 L78,64 L50,94 L22,64 Z"`;
-
-      let patternSvg = "";
-      if (pattern === "stripes") {
-        patternSvg = `<rect x="33" y="16" width="11" height="80" fill="${c2}" fill-opacity="0.35"/><rect x="56" y="16" width="11" height="80" fill="${c2}" fill-opacity="0.35"/>`;
-      } else if (pattern === "diagonal") {
-        patternSvg = `<polygon points="10,75 75,15 90,15 25,95" fill="${c2}" fill-opacity="0.35"/>`;
-      } else if (pattern === "half") {
-        patternSvg = `<rect x="50" y="16" width="40" height="80" fill="${c2}" fill-opacity="0.28"/>`;
-      }
-
-      inner = `
-        <defs><clipPath id="${clipId}">${shapePath}/></clipPath></defs>
-        ${shapePath} fill="${c1}" stroke="${c2}" stroke-width="5"/>
-        <g clip-path="url(#${clipId})">${patternSvg}</g>
-        ${shapePath} fill="none" stroke="${c2}" stroke-width="5"/>
-        <text x="50" y="64" font-family="Arial Black, sans-serif" font-weight="900" font-size="22" fill="${c2}" text-anchor="middle" stroke="#000" stroke-width="1.3">${tag}</text>
-      `;
+    let patternOverlay = "";
+    if (pattern === "split") {
+      patternOverlay = `<rect x="50" y="0" width="50" height="100" fill="${c2}" opacity="0.88" />`;
+    } else if (pattern === "stripe") {
+      patternOverlay = `<rect x="38" y="0" width="24" height="100" fill="${c2}" opacity="0.9" />`;
+    } else if (pattern === "sash") {
+      patternOverlay = `<polygon points="0,15 22,0 100,85 78,100" fill="${c2}" opacity="0.88" />`;
+    } else if (pattern === "chevron") {
+      patternOverlay = `<polygon points="10,42 50,72 90,42 90,62 50,90 10,62" fill="${c2}" opacity="0.88" />`;
     }
+
+    const fontSize = tag.length <= 2 ? 27 : (tag.length === 3 ? 22 : 18);
 
     return `
-      <svg width="${size}" height="${size}" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-        ${starsSvg}
-        ${inner}
-      </svg>
+      <div class="crest-wrapper" style="width:${size}px;">
+        ${starsHtml}
+        <svg width="${size}" height="${size}" viewBox="0 0 100 100" style="display:block;filter:drop-shadow(0 3px 6px rgba(0,0,0,0.45));">
+          <defs>
+            <clipPath id="clip_${uid}">
+              <path d="${shapePath}" />
+            </clipPath>
+          </defs>
+          <g clip-path="url(#clip_${uid})">
+            <rect x="0" y="0" width="100" height="100" fill="${c1}" />
+            ${patternOverlay}
+            <rect x="0" y="34" width="100" height="32" fill="rgba(6, 9, 17, 0.78)" />
+          </g>
+          <path d="${shapePath}" fill="none" stroke="${c2}" stroke-width="4.5" />
+          <text x="50" y="57" text-anchor="middle" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-weight="900" font-size="${fontSize}" letter-spacing="1">${tag}</text>
+        </svg>
+      </div>
     `;
   },
 
+  // TROFEOS VECTORIALES
   renderTrophy(compId, size = 48) {
-    const palettes = {
-      rlcs_regional: { main: "#38bdf8", trim: "#0284c7", label: "RLCS" },
-      challenger_cup:{ main: "#a78bfa", trim: "#6d28d9", label: "CHAL" },
-      paris_major:   { main: "#e879f9", trim: "#a21caf", label: "PARIS" },
-      boston_major:  { main: "#f87171", trim: "#b91c1c", label: "BOSTON" },
-      rlcs_lcq:      { main: "#fb923c", trim: "#c2410c", label: "LCQ" },
-      rlcs_worlds:   { main: "#fbbf24", trim: "#d97706", label: "WORLDS" },
-      club_wc:       { main: "#34d399", trim: "#059669", label: "CWC" },
-      fifae_wc:      { main: "#facc15", trim: "#ca8a04", label: "FIFAe" }
-    };
-    const p = palettes[compId] || palettes.rlcs_regional;
+    let primary = "#38bdf8";
+    let secondary = "#0284c7";
+    let label = "RLCS";
+
+    if (compId === "rlcs_worlds") {
+      primary = "#facc15"; secondary = "#ca8a04"; label = "WORLDS";
+    } else if (compId === "rlcs_major1" || compId === "rlcs_major2") {
+      primary = "#e2e8f0"; secondary = "#94a3b8"; label = "MAJOR";
+    } else if (compId === "ewc") {
+      primary = "#f59e0b"; secondary = "#b45309"; label = "EWC";
+    } else if (compId === "fifae_wc") {
+      primary = "#10b981"; secondary = "#047857"; label = "FIFAe";
+    } else if (compId === "challenger_cup") {
+      primary = "#a78bfa"; secondary = "#6d28d9"; label = "CHAL";
+    }
 
     return `
-      <svg width="${size}" height="${size}" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-        <path d="M30,18 H70 L64,54 C62,66 38,66 36,54 Z" fill="${p.main}" stroke="${p.trim}" stroke-width="4"/>
-        <path d="M30,24 H16 C16,42 26,46 34,46" fill="none" stroke="${p.main}" stroke-width="5"/>
-        <path d="M70,24 H84 C84,42 74,46 66,46" fill="none" stroke="${p.main}" stroke-width="5"/>
-        <rect x="44" y="63" width="12" height="16" fill="${p.trim}"/>
-        <rect x="30" y="79" width="40" height="10" rx="3" fill="${p.main}"/>
-        <text x="50" y="42" font-family="Arial, sans-serif" font-weight="800" font-size="13" fill="#0b0f19" text-anchor="middle">${p.label}</text>
+      <svg width="${size}" height="${size}" viewBox="0 0 100 100" style="display:inline-block;vertical-align:middle;filter:drop-shadow(0 3px 6px rgba(0,0,0,0.5));">
+        <path d="M26 22 L12 22 C12 42 22 48 30 48" fill="none" stroke="${secondary}" stroke-width="5" stroke-linecap="round" />
+        <path d="M74 22 L88 22 C88 42 78 48 70 48" fill="none" stroke="${secondary}" stroke-width="5" stroke-linecap="round" />
+        <path d="M26 16 L74 16 L68 54 C65 66 35 66 32 54 Z" fill="${primary}" stroke="${secondary}" stroke-width="3" />
+        <rect x="44" y="62" width="12" height="18" fill="${secondary}" />
+        <rect x="30" y="80" width="40" height="10" rx="3" fill="${primary}" stroke="${secondary}" stroke-width="2.5" />
+        <text x="50" y="42" text-anchor="middle" fill="#0f172a" font-family="Inter, Arial, sans-serif" font-weight="900" font-size="13">${label}</text>
       </svg>
     `;
   },
 
+  // BADGE DE RANGO COMPETITIVO (CANTERA)
   renderRankBadge(rank) {
-    const labels = { C3: "Champ III", GC1: "GC I", GC2: "GC II", GC3: "GC III", SSL: "SSL" };
-    return `<span class="rank-badge rank-${rank}">⬡ ${labels[rank] || rank}</span>`;
+    const map = {
+      SSL: { bg: "linear-gradient(135deg,#ffffff,#e879f9)", color: "#1e1b4b", text: "SSL" },
+      GC3: { bg: "#dc2626", color: "#fff", text: "GC III" },
+      GC2: { bg: "#ef4444", color: "#fff", text: "GC II" },
+      GC1: { bg: "#f87171", color: "#111", text: "GC I" },
+      C3:  { bg: "#9333ea", color: "#fff", text: "C III" }
+    };
+    const r = map[rank] || { bg: "#334155", color: "#fff", text: rank };
+    return `<span style="display:inline-block;padding:2px 7px;border-radius:6px;font-size:0.72rem;font-weight:800;background:${r.bg};color:${r.color};">${r.text}</span>`;
   },
 
-  // RENDERIZADOR DE LA CANCHA 2D DE ROCKET LEAGUE EN VIVO
+  // DIBUJO DE SILUETA DE AUTO REAL (FENNEC, OCTANE O DOMINUS)
+  _drawCarBody(ctx, carType, isHome) {
+    const bodyColor = isHome ? "#0284c7" : "#ea580c";
+    const accentColor = isHome ? "#38bdf8" : "#fdba74";
+
+    // Ruedas negras con llanta brillante
+    ctx.fillStyle = "#090d16";
+    ctx.fillRect(-10, -9.5, 6, 2.5);
+    ctx.fillRect(4, -9.5, 6, 2.5);
+    ctx.fillRect(-10, 7, 6, 2.5);
+    ctx.fillRect(4, 7, 6, 2.5);
+
+    ctx.fillStyle = bodyColor;
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 1.6;
+
+    if (carType === "Dominus") {
+      // Silueta alargada estilo muscle car
+      ctx.beginPath();
+      ctx.roundRect(-14, -7, 28, 14, 3);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = accentColor;
+      ctx.fillRect(-11, -2, 22, 4);
+      ctx.fillStyle = "#0f172a";
+      ctx.fillRect(2, -5.5, 5, 11);
+    } else if (carType === "Octane") {
+      // Silueta clásica con alerón trasero y trompa afilada
+      ctx.beginPath();
+      ctx.moveTo(-12, -7);
+      ctx.lineTo(6, -7);
+      ctx.lineTo(13, -4);
+      ctx.lineTo(13, 4);
+      ctx.lineTo(6, 7);
+      ctx.lineTo(-12, 7);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // Alerón trasero
+      ctx.fillStyle = accentColor;
+      ctx.fillRect(-13.5, -7.5, 3, 15);
+      // Cabina
+      ctx.fillStyle = "#0f172a";
+      ctx.fillRect(0, -4.5, 5.5, 9);
+    } else {
+      // Fennec (compacto hatchback con líneas agresivas)
+      ctx.beginPath();
+      ctx.roundRect(-12, -7.5, 24, 15, 4);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = accentColor;
+      ctx.fillRect(-8, -5.5, 16, 2);
+      ctx.fillRect(-8, 3.5, 16, 2);
+      ctx.fillStyle = "#0f172a";
+      ctx.fillRect(2.5, -5.5, 5, 11);
+    }
+
+    // Faros delanteros
+    ctx.fillStyle = "#fef08a";
+    ctx.fillRect(11.5, -5, 1.8, 2.5);
+    ctx.fillRect(11.5, 2.5, 1.8, 2.5);
+  },
+
+  // RENDERIZADOR DE LA CANCHA 2D DE ROCKET LEAGUE EN VIVO (v7.2)
   drawPitch2D(canvas, simState) {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     const W = canvas.width;
     const H = canvas.height;
+    const now = Date.now() * 0.005;
 
-    // Fondo césped Champions Field nocturno
+    // Fondo césped Champions Field nocturno con iluminación de estadio
     const grad = ctx.createLinearGradient(0, 0, W, 0);
-    grad.addColorStop(0, "#0b1930");
-    grad.addColorStop(0.5, "#0f2438");
-    grad.addColorStop(1, "#2a1711");
+    grad.addColorStop(0, "#08162b");
+    grad.addColorStop(0.5, "#0d2238");
+    grad.addColorStop(1, "#29140d");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, H);
 
-    // Franjas sutiles de césped
+    // Franjas de césped
     ctx.fillStyle = "rgba(255,255,255,0.025)";
     for (let x = 36; x < W - 36; x += 56) {
       ctx.fillRect(x, 18, 28, H - 36);
     }
 
-    // Perímetro exterior del estadio
-    ctx.strokeStyle = "#334155";
+    // Perímetro exterior con borde luminoso por mitad
     ctx.lineWidth = 3;
-    ctx.strokeRect(36, 18, W - 72, H - 36);
+    ctx.strokeStyle = "#0284c7";
+    ctx.strokeRect(36, 18, W / 2 - 36, H - 36);
+    ctx.strokeStyle = "#ea580c";
+    ctx.strokeRect(W / 2, 18, W / 2 - 36, H - 36);
 
-    // Línea central y círculo central
-    ctx.strokeStyle = "rgba(148,163,184,0.35)";
+    // Línea y círculo central
+    ctx.strokeStyle = "rgba(148,163,184,0.38)";
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(W / 2, 18);
@@ -202,6 +232,14 @@ const Graphics = {
     ctx.beginPath();
     ctx.arc(W / 2, H / 2, 48, 0, Math.PI * 2);
     ctx.stroke();
+
+    // Etiquetas sutiles de campo en el césped
+    ctx.font = "900 11px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "rgba(56, 189, 248, 0.25)";
+    ctx.fillText("BLUE SIDE", 160, 34);
+    ctx.fillStyle = "rgba(251, 146, 60, 0.25)";
+    ctx.fillText("ORANGE SIDE", W - 160, 34);
 
     // Áreas y Arcos (Azul izquierda, Naranja derecha)
     ctx.strokeStyle = "#0ea5e9";
@@ -216,15 +254,22 @@ const Graphics = {
     ctx.fillRect(W - 36, H / 2 - 44, 22, 88);
     ctx.strokeRect(W - 36, H / 2 - 44, 22, 88);
 
-    // 6 Big Boost Pads (100% Boost)
+    // 6 Big Boost Pads (100% Boost) con pulso luminoso
     const pads = simState?.boostPads || [
       { x: 64, y: 42, active: true }, { x: W / 2, y: 38, active: true }, { x: W - 64, y: 42, active: true },
       { x: 64, y: H - 42, active: true }, { x: W / 2, y: H - 38, active: true }, { x: W - 64, y: H - 42, active: true }
     ];
     pads.forEach(pad => {
+      if (pad.active) {
+        const pulse = 9 + Math.sin(now) * 2;
+        ctx.beginPath();
+        ctx.arc(pad.x, pad.y, pulse, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(250, 204, 21, 0.22)";
+        ctx.fill();
+      }
       ctx.beginPath();
-      ctx.arc(pad.x, pad.y, 7, 0, Math.PI * 2);
-      ctx.fillStyle = pad.active ? "#facc15" : "rgba(250,204,21,0.18)";
+      ctx.arc(pad.x, pad.y, 6.5, 0, Math.PI * 2);
+      ctx.fillStyle = pad.active ? "#facc15" : "rgba(250,204,21,0.16)";
       ctx.fill();
       if (pad.active) {
         ctx.strokeStyle = "#fef08a";
@@ -235,61 +280,125 @@ const Graphics = {
 
     if (!simState) return;
 
-    // Dibujar Autos (3 Locales Azules + 3 Visitantes Naranjas)
+    // Dibujar Autos con silueta real, estela supersonic y barra de boost
     (simState.cars || []).forEach(car => {
       if (car.demoTimer > 0) {
-        ctx.fillStyle = "#ef4444";
+        ctx.beginPath();
+        ctx.arc(car.x, car.y, 16, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(239, 68, 68, 0.28)";
+        ctx.fill();
+        ctx.fillStyle = "#fca5a5";
         ctx.font = "bold 11px sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText("💥 DEMO", car.x, car.y);
+        ctx.fillText("💥 DEMO", car.x, car.y + 4);
         return;
       }
 
-      // Estela de boost si está acelerando
+      const angle = car.angle ?? (car.isHome ? 0 : Math.PI);
+
+      ctx.save();
+      ctx.translate(car.x, car.y);
+      ctx.rotate(angle);
+
+      // Estela Supersonic y llama de boost por detrás
       if (car.boosting && car.boost > 5) {
+        const trailGrad = ctx.createLinearGradient(-12, 0, -36, 0);
+        trailGrad.addColorStop(0, car.isHome ? "rgba(56, 189, 248, 0.85)" : "rgba(251, 146, 60, 0.85)");
+        trailGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
+        ctx.fillStyle = trailGrad;
         ctx.beginPath();
-        ctx.arc(car.x - (car.isHome ? 12 : -12), car.y, 6, 0, Math.PI * 2);
-        ctx.fillStyle = car.isHome ? "rgba(56,189,248,0.55)" : "rgba(251,146,60,0.55)";
+        ctx.moveTo(-12, -5);
+        ctx.lineTo(-34 - Math.random() * 8, 0);
+        ctx.lineTo(-12, 5);
+        ctx.closePath();
+        ctx.fill();
+
+        // Núcleo blanco de llama
+        ctx.fillStyle = "#fef9c3";
+        ctx.beginPath();
+        ctx.moveTo(-12, -2.5);
+        ctx.lineTo(-20 - Math.random() * 4, 0);
+        ctx.lineTo(-12, 2.5);
+        ctx.closePath();
         ctx.fill();
       }
 
-      // Chasis del auto
-      ctx.fillStyle = car.isHome ? "#0284c7" : "#ea580c";
-      ctx.strokeStyle = "#ffffff";
-      ctx.lineWidth = 1.8;
-      ctx.beginPath();
-      ctx.roundRect(car.x - 11, car.y - 7, 22, 14, 4);
-      ctx.fill();
-      ctx.stroke();
+      // Chasis según modelo (Fennec / Octane / Dominus)
+      this._drawCarBody(ctx, car.carBody || (car.isHome ? "Fennec" : "Octane"), car.isHome);
+      ctx.restore();
 
-      // Barra de boost mini arriba del auto
-      ctx.fillStyle = "#0f172a";
-      ctx.fillRect(car.x - 12, car.y - 14, 24, 3);
-      ctx.fillStyle = "#facc15";
-      ctx.fillRect(car.x - 12, car.y - 14, (car.boost / 100) * 24, 3);
+      // Barra de boost arriba del auto
+      ctx.fillStyle = "rgba(2, 6, 23, 0.85)";
+      ctx.fillRect(car.x - 14, car.y - 17, 28, 4);
+      ctx.fillStyle = car.boost > 25 ? "#facc15" : "#ef4444";
+      ctx.fillRect(car.x - 14, car.y - 17, (car.boost / 100) * 28, 4);
 
-      // Nombre del jugador debajo
-      ctx.fillStyle = "#f8fafc";
-      ctx.font = "bold 10px sans-serif";
+      // Nickname nítido
+      ctx.font = "bold 11px sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(car.name, car.x, car.y + 18);
+      ctx.fillStyle = "rgba(2, 6, 23, 0.9)";
+      ctx.fillText(car.name, car.x + 1, car.y + 22);
+      ctx.fillStyle = car.isHome ? "#bae6fd" : "#fed7aa";
+      ctx.fillText(car.name, car.x, car.y + 21);
     });
 
-    // Dibujar la Pelota de Rocket League
-    const ball = simState.ball || { x: W / 2, y: H / 2, aerial: false };
-    const radius = ball.aerial ? 13 : 10;
+    // Estela de velocidad de la pelota según último toque
+    const ball = simState.ball || { x: W / 2, y: H / 2, vx: 0, vy: 0, aerial: false };
+    const speed = Math.hypot(ball.vx || 0, ball.vy || 0);
+    if (speed > 2.2) {
+      const trailColor = ball.lastTouch
+        ? (ball.lastTouch.isHome ? "rgba(56, 189, 248, 0.35)" : "rgba(251, 146, 60, 0.35)")
+        : "rgba(255, 255, 255, 0.25)";
+      ctx.beginPath();
+      ctx.moveTo(ball.x, ball.y);
+      ctx.lineTo(ball.x - ball.vx * 5.5, ball.y - ball.vy * 5.5);
+      ctx.strokeStyle = trailColor;
+      ctx.lineWidth = ball.aerial ? 14 : 10;
+      ctx.lineCap = "round";
+      ctx.stroke();
+    }
 
+    // Dibujar Pelota con detalle geométrico
+    const radius = ball.aerial ? 12 : 9.5;
     ctx.beginPath();
     ctx.arc(ball.x, ball.y, radius + 4, 0, Math.PI * 2);
-    ctx.fillStyle = ball.aerial ? "rgba(250, 204, 21, 0.32)" : "rgba(255, 255, 255, 0.2)";
+    ctx.fillStyle = ball.aerial ? "rgba(250, 204, 21, 0.38)" : "rgba(255, 255, 255, 0.18)";
     ctx.fill();
 
     ctx.beginPath();
     ctx.arc(ball.x, ball.y, radius, 0, Math.PI * 2);
-    ctx.fillStyle = "#e2e8f0";
+    ctx.fillStyle = "#f8fafc";
     ctx.fill();
     ctx.strokeStyle = ball.aerial ? "#facc15" : "#38bdf8";
     ctx.lineWidth = 2.5;
     ctx.stroke();
+
+    // Núcleo interno de la pelota RL
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, radius * 0.45, 0, Math.PI * 2);
+    ctx.strokeStyle = "#64748b";
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    // Onda expansiva y cartel de ¡GOOOL! dentro de la cancha
+    if (simState.goalBannerTimer > 0) {
+      const blastRadius = (56 - simState.goalBannerTimer) * 5;
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, blastRadius, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(250, 204, 21, 0.45)";
+      ctx.lineWidth = 4;
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(2, 6, 23, 0.84)";
+      ctx.fillRect(W / 2 - 180, H / 2 - 30, 360, 60);
+      ctx.strokeStyle = "#facc15";
+      ctx.lineWidth = 2.5;
+      ctx.strokeRect(W / 2 - 180, H / 2 - 30, 360, 60);
+
+      ctx.fillStyle = "#facc15";
+      ctx.font = "900 18px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(simState.goalBannerText || "¡GOOOOL!", W / 2, H / 2 + 6);
+    }
   }
 };
