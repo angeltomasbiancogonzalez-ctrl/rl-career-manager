@@ -3,61 +3,63 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RL Career Manager v7.0 — Edición Estadio & Dinastía</title>
+  <title>RL Career Manager v8.0 — Dinastía & Estadio</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <!-- PANTALLA 1: CONFIGURACIÓN DE CARRERA -->
-  <section id="setup-screen" class="screen active">
-    <div class="setup-wrapper">
-      <header class="hero-header">
-        <div id="hero-logo"></div>
-        <h1>RL CAREER MANAGER <span class="badge-pro">v7.0 ESTADIO</span></h1>
-        <p>Motor 2D en Vivo • Simulación Mundial RLCS • Club Hub • Selecciones FIFAe • Canteras</p>
-        <div class="hero-actions">
-          <button id="btn-continue-save" class="btn-success" style="display:none;" onclick="loadSavedGame()">Continuar Carrera Guardada</button>
-        </div>
-      </header>
 
-      <div class="card" style="margin-bottom:20px;">
-        <h3>1. Perfil del Mánager</h3>
+  <!-- PANTALLA 1: CREACIÓN DE CARRERA -->
+  <section id="setup-screen" class="screen active">
+    <div class="setup-container">
+      <div class="hero-header">
+        <div id="hero-trophy-slot"></div>
+        <h1>RL CAREER MANAGER <span>v8.0</span></h1>
+        <p>Física 2D Real • RLCS Pro & Challenger • Club Hub • Selecciones FIFAe • Canteras</p>
+        <div id="continue-save-box" class="hidden" style="margin-top:14px;">
+          <button class="btn-success" onclick="loadSavedGame()">Continuar Carrera Guardada</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>1. Perfil del Mánager</h2>
         <div class="form-row">
           <div class="field">
             <label>Tu Nombre / Nick de DT</label>
-            <input type="text" id="mgr-name-input" value="Tomy" />
+            <input type="text" id="mgr-name-input" value="Tomy" maxlength="18" />
           </div>
           <div class="field">
             <label>Nacionalidad</label>
-            <select id="mgr-country-input">
+            <select id="mgr-country-select">
               <option value="AR" selected>🇦🇷 Argentina</option>
               <option value="CL">🇨🇱 Chile</option>
               <option value="BR">🇧🇷 Brasil</option>
-              <option value="ES">🇪🇸 España</option>
               <option value="FR">🇫🇷 Francia</option>
               <option value="US">🇺🇸 Estados Unidos</option>
+              <option value="ES">🇪🇸 España</option>
               <option value="SA">🇸🇦 Arabia Saudita</option>
             </select>
           </div>
           <div class="field">
             <label>Especialidad de Mánager</label>
-            <select id="mgr-spec-input">
+            <select id="mgr-specialty-select">
               <option value="ACADEMY">🌱 Formador de Canteras (+Progreso Juvenil y Scouting)</option>
-              <option value="TACTICIAN">🧠 Estratega de Cancha (+Bonus Táctico en Campo 2D)</option>
-              <option value="NEGOTIATOR">💼 Negociador Tiburón (-15% Costo Fichajes y Cláusulas)</option>
+              <option value="TACTICIAN">🧠 Estratega de Cancha (+2 OVR Base en Partidos)</option>
+              <option value="NEGOTIATOR">💼 Negociador Tiburón (-15% Costo en Fichajes)</option>
             </select>
           </div>
         </div>
       </div>
 
-      <div class="setup-tabs">
-        <button class="tab-btn active" onclick="switchSetupTab('existing', this)">2A. Elegir Club Oficial</button>
-        <button class="tab-btn" onclick="switchSetupTab('custom', this)">2B. Fundar Club desde Abajo (Challenger)</button>
+      <div class="mode-switch">
+        <button class="mode-btn active" id="btn-mode-existing" onclick="setSetupMode('existing')">2A. Elegir Club Oficial</button>
+        <button class="mode-btn" id="btn-mode-create" onclick="setSetupMode('create')">2B. Fundar Club desde Abajo (Challenger)</button>
       </div>
 
-      <div id="setup-existing" class="setup-panel active">
+      <!-- 2A: CLUB EXISTENTE -->
+      <div id="panel-existing" class="setup-panel active">
         <div class="filter-bar">
-          <label>Filtrar Región RLCS:</label>
-          <select id="setup-region-filter" onchange="renderSetupTeams()">
+          <label for="region-filter">Filtrar Región RLCS:</label>
+          <select id="region-filter" onchange="renderSetupTeams()">
             <option value="ALL">Todas las Regiones (EU, NA, SAM, MENA)</option>
             <option value="SAM">Sudamérica (SAM)</option>
             <option value="EU">Europa (EU)</option>
@@ -65,24 +67,27 @@
             <option value="MENA">Medio Oriente (MENA)</option>
           </select>
         </div>
-        <div id="setup-team-grid" class="team-grid"></div>
+        <div id="teams-grid" class="teams-grid"></div>
+        <div class="action-bar">
+          <button id="btn-start-existing" class="btn-primary" disabled onclick="startCareerExisting()">Comenzar Carrera en este Club</button>
+        </div>
       </div>
 
-      <div id="setup-custom" class="setup-panel">
-        <div class="card custom-org-card">
-          <h3>Fundá tu Propia Organización desde la División Challenger</h3>
-          <p class="muted" style="margin-bottom:14px;">Arrancás desde cero en Segunda División con $90,000 y jóvenes de 73–75 OVR para ascender hasta el Mundial RLCS.</p>
+      <!-- 2B: CREAR CLUB DESDE CHALLENGER -->
+      <div id="panel-create" class="setup-panel">
+        <div class="card create-club-card">
+          <h2>Fundar Nueva Organización (Arranca en 2da División Challenger)</h2>
           <div class="form-row">
             <div class="field">
               <label>Nombre de la Organización</label>
-              <input type="text" id="custom-team-name" placeholder="Ej: La Plata Esports" value="La Plata Esports" />
+              <input type="text" id="custom-team-name" placeholder="Ej: La Plata Esports" maxlength="26" />
             </div>
             <div class="field">
-              <label>Tag (3-4 letras)</label>
-              <input type="text" id="custom-team-tag" maxlength="4" placeholder="LPE" value="LPE" oninput="updateCustomCrestPreview()" />
+              <label>Siglas (TAG - 3/4 letras)</label>
+              <input type="text" id="custom-team-tag" placeholder="Ej: LPE" maxlength="4" />
             </div>
             <div class="field">
-              <label>Región</label>
+              <label>Región RLCS</label>
               <select id="custom-team-region">
                 <option value="SAM">Sudamérica (SAM)</option>
                 <option value="EU">Europa (EU)</option>
@@ -97,258 +102,300 @@
               <label>Forma del Escudo</label>
               <select id="custom-crest-shape" onchange="updateCustomCrestPreview()">
                 <option value="shield">Escudo Clásico</option>
-                <option value="hexagon">Hexágono Esports</option>
-                <option value="circle">Emblema Circular</option>
+                <option value="hexagon">Hexágono RLCS</option>
+                <option value="circle">Círculo Moderno</option>
                 <option value="diamond">Diamante</option>
-                <option value="modern">Escudo Moderno</option>
               </select>
             </div>
             <div class="field">
-              <label>Patrón Interno</label>
+              <label>Diseño Interior</label>
               <select id="custom-crest-pattern" onchange="updateCustomCrestPreview()">
                 <option value="solid">Sólido</option>
-                <option value="stripes">Franjas Verticales</option>
-                <option value="diagonal">Banda Diagonal</option>
-                <option value="half">Mitad y Mitad</option>
+                <option value="split">Mitad y Mitad</option>
+                <option value="stripe">Franja Central</option>
+                <option value="sash">Banda Diagonal</option>
+                <option value="chevron">V Invertida</option>
               </select>
             </div>
             <div class="field">
-              <label>Auto Signature</label>
-              <select id="custom-car-body">
-                <option value="Fennec">Fennec</option>
-                <option value="Octane">Octane</option>
-                <option value="Dominus">Dominus</option>
-              </select>
+              <label>Color Principal</label>
+              <input type="color" id="custom-color-1" value="#00a8ff" onchange="updateCustomCrestPreview()" />
+            </div>
+            <div class="field">
+              <label>Color Secundario</label>
+              <input type="color" id="custom-color-2" value="#ffffff" onchange="updateCustomCrestPreview()" />
             </div>
           </div>
 
           <div class="form-row">
             <div class="field">
-              <label>Color Principal</label>
-              <input type="color" id="custom-color-1" value="#0284c7" oninput="updateCustomCrestPreview()" />
-            </div>
-            <div class="field">
-              <label>Color Secundario</label>
-              <input type="color" id="custom-color-2" value="#ffffff" oninput="updateCustomCrestPreview()" />
-            </div>
-            <div class="field">
-              <label>URL Logo Personalizado (Opcional)</label>
+              <label>Logo URL Personalizado (Opcional)</label>
               <input type="text" id="custom-logo-url" placeholder="https://..." oninput="updateCustomCrestPreview()" />
+            </div>
+            <div class="field">
+              <label>Auto Oficial del Club</label>
+              <select id="custom-car">
+                <option value="Fennec">Fennec</option>
+                <option value="Octane">Octane</option>
+                <option value="Dominus">Dominus</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Presupuesto Inicial</label>
+              <select id="custom-budget">
+                <option value="180000">$180,000 (Modo Desafío)</option>
+                <option value="320000" selected>$320,000 (Equilibrado)</option>
+                <option value="650000">$650,000 (Inversor Millonario)</option>
+              </select>
             </div>
           </div>
 
-          <div class="crest-preview-row">
+          <div class="crest-preview-box">
             <div id="custom-crest-preview"></div>
             <div>
-              <strong>Vista Previa Oficial</strong>
-              <p class="muted">Cuando ganes el Mundial RLCS podrás bordar estrellas doradas sobre tu escudo.</p>
+              <strong id="preview-club-title">Tu Nuevo Club</strong>
+              <p class="muted">Arrancás en RLCS Challenger League con 3 jóvenes promesas.</p>
             </div>
           </div>
-          <button class="btn-primary" onclick="startWithCustomTeam()">Fundar Club en División Challenger</button>
+
+          <button class="btn-primary" onclick="startCareerCustom()">Fundar Club y Arrancar en Challenger</button>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- PANTALLA 2: PANEL DE GESTIÓN PRINCIPAL -->
+  <!-- PANTALLA 2: DASHBOARD DE CARRERA -->
   <section id="game-screen" class="screen">
     <header class="topbar">
-      <div class="club-identity" onclick="openClubDetailModal(GameState.userTeamId)" style="cursor:pointer;" title="Ver Ficha Completa de tu Club">
-        <div id="top-club-crest"></div>
+      <div class="club-info">
+        <div id="hud-crest"></div>
         <div>
-          <h2 id="top-club-name">Club</h2>
-          <span id="top-club-meta" class="muted">Región • OVR • Química</span>
+          <h2 id="hud-team-name">Club</h2>
+          <span id="hud-team-meta" class="badge">EU • PRO • OVR 88</span>
         </div>
       </div>
 
-      <div class="top-stats">
-        <div class="stat-pill"><small>TEMPORADA / META</small><strong id="top-season">2026</strong></div>
-        <div class="stat-pill"><small>EVENTO ACTUAL</small><strong id="top-stage">Open 1</strong></div>
-        <div class="stat-pill"><small>PRESUPUESTO</small><strong id="top-budget" class="money">$0</strong></div>
-        <div class="stat-pill"><small>PUNTOS / CONFIANZA</small><strong id="top-points">0 pts</strong></div>
+      <div class="hud-stats">
+        <div class="stat-box">
+          <small>Temporada</small>
+          <strong id="hud-season">2026-27</strong>
+        </div>
+        <div class="stat-box">
+          <small>Presupuesto</small>
+          <strong id="hud-budget" class="money">$350,000</strong>
+        </div>
+        <div class="stat-box">
+          <small>Puntos RLCS</small>
+          <strong id="hud-points">0 pts</strong>
+        </div>
+        <div class="stat-box">
+          <small>Química / OVR</small>
+          <strong id="hud-chem-ovr">85% / 88</strong>
+        </div>
+        <div class="stat-box">
+          <small>Mánager (Rep)</small>
+          <strong id="hud-manager-info">Tomy (75)</strong>
+        </div>
       </div>
 
-      <div class="top-actions">
+      <div class="hud-actions">
         <button class="btn-secondary btn-sm" onclick="saveGame(true)">Guardar</button>
-        <button class="btn-danger-outline btn-sm" onclick="resetCareer()">Salir</button>
+        <button class="btn-danger-outline btn-sm" onclick="resetCareer()">Menú</button>
       </div>
     </header>
 
-    <nav class="main-nav">
-      <button class="nav-btn active" data-tab="office" onclick="switchGameTab('office')">Oficina & Cancha 2D</button>
-      <button class="nav-btn" data-tab="competitions" onclick="switchGameTab('competitions')">Torneos & Clubes</button>
-      <button class="nav-btn" data-tab="squad" onclick="switchGameTab('squad')">Roster & Pizarra</button>
-      <button class="nav-btn" data-tab="academy" onclick="switchGameTab('academy')">Canteras & Scouts</button>
-      <button class="nav-btn" data-tab="market" onclick="switchGameTab('market')">Mercado & Sponsors</button>
-      <button class="nav-btn" data-tab="national" onclick="switchGameTab('national')">Selecciones FIFAe</button>
-      <button class="nav-btn" data-tab="career" onclick="switchGameTab('career')">Carrera DT & Club</button>
-      <button class="nav-btn" data-tab="trophies" onclick="switchGameTab('trophies')">Galas & Récords</button>
-      <button class="nav-btn" data-tab="editor" onclick="switchGameTab('editor')">Editor DB</button>
+    <div class="meta-ticker">
+      <span>🎮 <strong>Parche Meta:</strong> <span id="hud-meta-patch">Control Aéreo & Flip Resets</span></span>
+      <span>🏆 <strong>Próximo Evento:</strong> <span id="hud-next-event">Regional Open #1</span></span>
+    </div>
+
+    <nav class="nav-tabs">
+      <button class="tab-btn active" onclick="switchTab('tab-match', this)">Estadio 2D</button>
+      <button class="tab-btn" onclick="switchTab('tab-competitions', this)">Ligas & Club Hub</button>
+      <button class="tab-btn" onclick="switchTab('tab-squad', this)">Roster & Táctica</button>
+      <button class="tab-btn" onclick="switchTab('tab-academy', this)">Cantera & Scouting</button>
+      <button class="tab-btn" onclick="switchTab('tab-market', this)">Mercado & Sponsors</button>
+      <button class="tab-btn" onclick="switchTab('tab-national', this)">Selección FIFAe</button>
+      <button class="tab-btn" onclick="switchTab('tab-career', this)">Carrera & Club</button>
+      <button class="tab-btn" onclick="switchTab('tab-awards', this)">Vitrina & Galas</button>
+      <button class="tab-btn" onclick="switchTab('tab-editor', this)">Editor</button>
     </nav>
 
-    <main class="content-area">
-      <!-- TAB 1: OFICINA Y ESTADIO 2D EN VIVO -->
-      <div id="tab-office" class="game-tab active">
-        <div class="dashboard-grid">
-          <div class="card highlight-card">
+    <main class="main-content">
+
+      <!-- TAB 1: ESTADIO 2D EN VIVO -->
+      <div id="tab-match" class="tab-panel active">
+        <div id="dynamic-events-banner"></div>
+
+        <div class="grid-2">
+          <div class="card">
             <div class="card-header">
-              <div>
-                <h3 id="next-event-title">Próximo Evento</h3>
-                <p id="next-round-subtitle" class="muted">Ronda</p>
-              </div>
-              <div id="next-event-trophy"></div>
+              <h3 id="match-stage-title">RLCS Open Regional — Fase Suiza</h3>
+              <span class="badge" id="match-format-badge">Al Mejor de 5 (Bo5)</span>
             </div>
 
-            <div id="rivalry-banner" class="rivalry-banner hidden"></div>
-            <div id="bootcamp-banner" class="bootcamp-banner hidden">
-              <div>
-                <strong>✈️ Bootcamp Internacional Disponible</strong>
-                <div class="muted">+2 OVR y +3 Química para todo el torneo LAN ($35,000)</div>
+            <div class="matchup-box">
+              <div class="team-side">
+                <div id="match-home-crest"></div>
+                <strong id="match-home-name">Tu Equipo</strong>
+                <small id="match-home-ovr">OVR 88 • Fennec</small>
               </div>
-              <button class="btn-warning btn-sm" onclick="buyLanBootcamp()">Hacer Bootcamp</button>
-            </div>
-
-            <div class="weekly-prep-box">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                <strong>📅 Preparación de la Semana:</strong>
-                <span id="prep-status-text" class="badge">Pendiente</span>
+              <div class="vs-box">
+                <span>VS</span>
+                <small id="match-prize-label">Premio: $35,000</small>
+                <small id="match-h2h-label" class="muted">Historial: 0V - 0D</small>
               </div>
-              <div class="prep-grid">
-                <button class="prep-btn" onclick="applyWeeklyPrep('SCRIMS')">🔥 Scrims Intensos<br><small>+2 OVR / -12% Energía</small></button>
-                <button class="prep-btn" onclick="applyWeeklyPrep('TACTICS')">🧠 Análisis Replays<br><small>+4 Química / -4% Energía</small></button>
-                <button class="prep-btn" onclick="applyWeeklyPrep('REST')">🔋 Descanso & Media<br><small>+22% Energía / +$8,000</small></button>
+              <div class="team-side">
+                <div id="match-away-crest" class="clickable-crest" title="Ver ficha del rival"></div>
+                <strong id="match-away-name">Rival</strong>
+                <small id="match-away-ovr">OVR 86 • Octane</small>
               </div>
             </div>
 
-            <div id="next-match-box" class="match-vs-box"></div>
+            <!-- PREPARACIÓN SEMANAL -->
+            <div class="weekly-prep-box" id="weekly-prep-box">
+              <div class="prep-header">
+                <strong>⚡ Preparación de la Semana (1 acción antes de jugar):</strong>
+                <span id="prep-status-badge" class="badge">Disponible</span>
+              </div>
+              <div class="prep-buttons">
+                <button class="btn-outline btn-sm" id="btn-prep-scrims" onclick="doWeeklyPrep('SCRIMS')">Scrims Tácticos (+2 OVR)</button>
+                <button class="btn-outline btn-sm" id="btn-prep-bootcamp" onclick="doWeeklyPrep('BOOTCAMP')">Bootcamp Intensivo (-$18k, +3 OVR)</button>
+                <button class="btn-outline btn-sm" id="btn-prep-rest" onclick="doWeeklyPrep('REST')">Descanso Mental (+20% Energía)</button>
+                <button class="btn-outline btn-sm" id="btn-prep-media" onclick="doWeeklyPrep('MEDIA')">Media Day (+$15k)</button>
+              </div>
+            </div>
 
-            <!-- PANEL DE PARTIDO 2D EN VIVO -->
+            <div id="match-controls" class="match-controls">
+              <button class="btn-primary" onclick="startLiveSeries()">Jugar Serie en Vivo (Cancha 2D)</button>
+              <button class="btn-secondary" onclick="simulateSeriesInstant()">Simular Serie Rápida</button>
+            </div>
+
+            <!-- PANEL EN VIVO CON CANCHA 2D REAL -->
             <div id="live-series-panel" class="live-panel hidden">
-              <div class="live-scoreboard">
-                <div><span id="live-home-name">HOME</span> <strong id="live-home-series" class="series-num">0</strong></div>
-                <div class="live-center-hud">
-                  <div id="live-game-label" class="muted">JUEGO 1 (Bo5)</div>
-                  <div id="live-map-score" class="map-score">0 - 0</div>
-                  <div id="live-clock" class="rl-clock">5:00</div>
+              <div class="scoreboard">
+                <div class="sb-team">
+                  <span id="live-home-name">HOME</span>
+                  <strong id="live-home-series">0</strong>
                 </div>
-                <div><strong id="live-away-series" class="series-num">0</strong> <span id="live-away-name">AWAY</span></div>
+                <div class="sb-center">
+                  <div class="sb-game" id="live-game-label">JUEGO 1 (Bo5)</div>
+                  <div class="sb-goals" id="live-map-score">0 - 0</div>
+                  <div class="sb-clock" id="live-clock">5:00</div>
+                </div>
+                <div class="sb-team">
+                  <strong id="live-away-series">0</strong>
+                  <span id="live-away-name">AWAY</span>
+                </div>
               </div>
 
-              <!-- CANCHA 2D DE ROCKET LEAGUE -->
-              <div class="pitch-wrapper">
+              <!-- CANCHA 2D DE ROCKET LEAGUE EN VIVO -->
+              <div class="pitch-container">
                 <canvas id="rl-pitch-canvas" width="640" height="360"></canvas>
-                <div id="live-boost-hud" class="boost-hud-bar"></div>
+                <div class="boost-hud-bar" id="live-boost-hud"></div>
               </div>
 
+              <!-- CONTROLES TÁCTICOS EN VIVO -->
               <div class="live-tactics-bar">
                 <select id="live-tactic-select" onchange="changeLiveTactic()">
                   <option value="balanced">Táctica: Equilibrada</option>
-                  <option value="aggressive">Táctica: Presión Alta & Demos</option>
-                  <option value="possession">Táctica: Control de Boost & Pases</option>
-                  <option value="defensive">Táctica: Cerrojo Defensivo</option>
+                  <option value="aggressive">Presión Alta & Demos (+Ataque)</option>
+                  <option value="possession">Control de Boost & Pases (+Química)</option>
+                  <option value="defensive">Cerrojo Defensivo (+Atajadas)</option>
                 </select>
                 <button id="btn-speed-toggle" class="btn-outline btn-sm" onclick="toggleClockSpeed()">Vel: 1x (5s/min)</button>
                 <button id="btn-timeout" class="btn-warning btn-sm" onclick="useTacticalTimeout()">Timeout (1)</button>
               </div>
 
               <div id="zero-second-alert" class="zero-sec-box hidden">
-                <span>⏱️ <strong>¡SEGUNDO CERO (0:00)!</strong> Balón en el aire... ¿Jugada agónica?</span>
-                <div style="display:flex;gap:6px;">
-                  <button class="btn-danger btn-sm" onclick="triggerZeroSecondPlay(true)">¡All-In Aerial!</button>
-                  <button class="btn-secondary btn-sm" onclick="triggerZeroSecondPlay(false)">Asegurar</button>
+                <strong>⏱️ ¡SEGUNDO CERO (0:00)! LA PELOTA SIGUE EN EL AIRE:</strong>
+                <div style="display:flex;gap:8px;margin-top:8px;">
+                  <button class="btn-warning btn-sm" onclick="triggerZeroSecondPlay(true)">Arriesgar Todo al Ataque</button>
+                  <button class="btn-secondary btn-sm" onclick="triggerZeroSecondPlay(false)">Asegurar Posesión</button>
                 </div>
               </div>
 
-              <div id="live-events-log" class="live-log"></div>
+              <div id="live-events-log" class="events-log"></div>
 
               <div class="live-actions">
-                <button id="btn-play-next-map" class="btn-primary" onclick="startLiveMapTimer()">Arrancar Reloj del Juego 1 (5:00)</button>
+                <button id="btn-play-next-map" class="btn-success" onclick="startLiveMapTimer()">Arrancar Reloj del Juego 1 (5:00)</button>
                 <button id="btn-skip-map" class="btn-secondary hidden" onclick="skipCurrentLiveMap()">Saltar al Final del Mapa</button>
-                <button id="btn-finish-series" class="btn-success hidden" onclick="closeLiveSeriesPanel()">Continuar</button>
+                <button id="btn-finish-series" class="btn-primary hidden" onclick="closeLiveSeries()">Finalizar Serie y Avanzar</button>
               </div>
-            </div>
-
-            <div id="match-controls" class="match-actions">
-              <button class="btn-primary" onclick="startLiveSeries()">Jugar Serie en Cancha 2D (5:00)</button>
-              <button class="btn-secondary" onclick="simulateSeriesInstant()">Simular Serie</button>
-              <button class="btn-outline" onclick="openManualResultModal()">Resultado Manual</button>
             </div>
           </div>
 
           <div class="card">
-            <h3>Centro de Noticias, Vestuario y Ofertas</h3>
-            <div id="job-offer-box"></div>
-            <div id="locker-event-box"></div>
-            <div id="incoming-offer-box"></div>
+            <h3>Boletín RLCS & Actividad Mundial</h3>
             <div id="news-feed" class="news-feed"></div>
           </div>
         </div>
       </div>
 
-      <!-- TAB 2: COMPETENCIAS Y EXPLORADOR DE CLUBES -->
-      <div id="tab-competitions" class="game-tab">
-        <div class="card" style="margin-bottom:14px;padding:12px 18px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-            <span class="muted">💡 <strong>Tip:</strong> Hacé clic en cualquier <strong>Club</strong> de las tablas para abrir su Ficha Completa con jugadores, estadísticas y finanzas, o en cualquier <strong>Jugador</strong> para ver su historial.</span>
-            <select id="club-directory-select" onchange="if(this.value) openClubDetailModal(this.value)" style="max-width:260px;margin:0;">
-              <option value="">🔍 Inspeccionar cualquier Club...</option>
+      <!-- TAB 2: COMPETICIONES & CLUB HUB -->
+      <div id="tab-competitions" class="tab-panel">
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header">
+            <h3>Explorar Clubes del Mundo (Club Hub)</h3>
+            <select id="club-directory-select" onchange="if(this.value) openClubDetailModal(this.value)">
+              <option value="">Seleccionar cualquier club para ver plantilla, cantera y finanzas...</option>
             </select>
           </div>
-        </div>
-
-        <div class="comp-selector">
-          <button class="comp-pill active" onclick="selectCompView('rlcs_regional', this)">RLCS Regional & Challenger</button>
-          <button class="comp-pill" onclick="selectCompView('swiss_stage', this)">Fase Suiza</button>
-          <button class="comp-pill" onclick="selectCompView('current_bracket', this)">Llaves Playoffs</button>
-          <button class="comp-pill" onclick="selectCompView('majors_worlds', this)">Ranking Mundial RLCS</button>
-          <button class="comp-pill" onclick="selectCompView('player_stats', this)">Líderes Goles/Asist.</button>
-          <button class="comp-pill" onclick="selectCompView('national_leagues', this)">Ligas Nacionales</button>
-          <button class="comp-pill" onclick="selectCompView('fifae_wc', this)">Mundial FIFAe</button>
+          <div class="comp-tabs">
+            <button class="comp-pill active" onclick="selectCompView('rlcs_regional', this)">RLCS Pro & Challenger</button>
+            <button class="comp-pill" onclick="selectCompView('swiss_stage', this)">Fase Suiza Actual</button>
+            <button class="comp-pill" onclick="selectCompView('current_bracket', this)">Llaves Playoffs</button>
+            <button class="comp-pill" onclick="selectCompView('majors_worlds', this)">Ranking Mundial</button>
+            <button class="comp-pill" onclick="selectCompView('player_stats', this)">Goleadores & Asist.</button>
+            <button class="comp-pill" onclick="selectCompView('national_leagues', this)">Ligas Nacionales</button>
+            <button class="comp-pill" onclick="selectCompView('fifae_wc', this)">FIFAe World Cup</button>
+          </div>
         </div>
         <div id="competition-view" class="card"></div>
       </div>
 
-      <!-- TAB 3: ROSTER Y PIZARRA TÁCTICA -->
-      <div id="tab-squad" class="game-tab">
-        <div class="dashboard-grid">
+      <!-- TAB 3: ROSTER & PIZARRA TÁCTICA -->
+      <div id="tab-squad" class="tab-panel">
+        <div class="grid-2">
           <div class="card">
             <div class="card-header">
-              <h3>Roster Activo & Energía</h3>
-              <span id="team-chemistry-badge" class="badge">Química: 85%</span>
+              <h3>Roster Activo (3 Titulares)</h3>
+              <span class="badge" id="team-chemistry-badge">Química: 88%</span>
             </div>
-            <div id="squad-list" class="roster-grid"></div>
+            <div id="squad-list" class="squad-grid"></div>
           </div>
+
           <div class="card">
-            <h3>Pizarra Táctica & Cuerpo Técnico</h3>
-            <div id="tactical-board-box" style="margin-bottom:16px;"></div>
-            <div id="active-coach-box"></div>
-            <hr style="border-color:var(--border);margin:14px 0;">
-            <div id="club-identity-box"></div>
+            <h3>Pizarra Táctica, Coach e Identidad</h3>
+            <div id="tactical-board-box"></div>
+            <div id="active-coach-box" style="margin-top:12px;"></div>
+            <div id="club-identity-box" style="margin-top:14px;"></div>
           </div>
         </div>
       </div>
 
-      <!-- TAB 4: CANTERAS Y RED DE SCOUTS -->
-      <div id="tab-academy" class="game-tab">
-        <div class="dashboard-grid">
+      <!-- TAB 4: CANTERA & SCOUTING -->
+      <div id="tab-academy" class="tab-panel">
+        <div class="grid-2">
           <div class="card">
-            <h3>Radar de Juveniles y Red de Ojeadores</h3>
-            <div id="scouting-network-box" style="margin-bottom:16px;"></div>
+            <h3>Red de Ojeadores & Creador de Prodigios</h3>
+            <div id="scouting-network-box" style="margin-bottom:14px;"></div>
 
-            <hr style="border-color:var(--border);margin:14px 0;">
-            <h4>Crear Prodigio Personalizado (12-14 años)</h4>
-            <div class="form-row">
+            <div class="field">
+              <label>Crear Prodigio Juvenil Personalizado</label>
+              <input type="text" id="prospect-names-input" placeholder="Ej: NachoRL, SantiFlip, LukaPro" />
+            </div>
+            <div class="form-row" style="margin-top:10px;">
               <div class="field">
                 <label>Destino del Juvenil</label>
                 <select id="custom-prospect-destination">
-                  <option value="MY_ACADEMY">Mi Propia Cantera</option>
-                  <option value="RANDOM_ACADEMY">Canteras Aleatorias del Mundo</option>
+                  <option value="MY_ACADEMY">Mi Academia Juvenil</option>
+                  <option value="RIVAL_ACADEMY">Cantera de Otro Club</option>
                 </select>
               </div>
               <div class="field">
-                <label>País</label>
+                <label>Nacionalidad</label>
                 <select id="custom-prospect-country">
-                  <option value="RANDOM">Aleatorio</option>
                   <option value="AR">🇦🇷 Argentina</option>
                   <option value="CL">🇨🇱 Chile</option>
                   <option value="BR">🇧🇷 Brasil</option>
@@ -356,6 +403,7 @@
                   <option value="US">🇺🇸 Estados Unidos</option>
                   <option value="SA">🇸🇦 Arabia Saudita</option>
                   <option value="ES">🇪🇸 España</option>
+                  <option value="RANDOM">🌐 Aleatoria</option>
                 </select>
               </div>
             </div>
@@ -363,36 +411,31 @@
               <div class="field">
                 <label>Rango Inicial</label>
                 <select id="custom-prospect-rank">
-                  <option value="AUTO">Aleatorio (C3 a SSL)</option>
-                  <option value="C3_12">Champ III (12 años - OVR 66)</option>
-                  <option value="GC1_13">Grand Champion I (13 años - OVR 69)</option>
-                  <option value="GC2_13">Grand Champion II (13 años - OVR 74)</option>
-                  <option value="GC3_14">Grand Champion III (14 años - OVR 78)</option>
-                  <option value="SSL_14">Supersonic Legend (14 años - OVR 81)</option>
+                  <option value="AUTO">Automático</option>
+                  <option value="SSL">Supersonic Legend (14 años - Pot 97)</option>
+                  <option value="GC3">Grand Champion III (15 años - Pot 94)</option>
+                  <option value="GC2">Grand Champion II (15 años - Pot 91)</option>
                 </select>
               </div>
               <div class="field">
-                <label>Arquetipo</label>
+                <label>Estilo de Juego</label>
                 <select id="custom-prospect-archetype">
-                  <option value="AUTO">Aleatorio</option>
-                  <option value="Freestyler">Freestyler (+Mecánica)</option>
-                  <option value="Cerebro Táctico">Cerebro Táctico (+Rotación/Defensa)</option>
-                  <option value="Ranked Demon 1v1">Ranked Demon 1v1 (+Goleador)</option>
-                  <option value="Diamante en Bruto">Diamante en Bruto (+Potencial)</option>
+                  <option value="AUTO">Automático</option>
+                  <option value="Freestyler">Freestyler Mecánico</option>
+                  <option value="Cerebro Táctico">Cerebro Táctico</option>
+                  <option value="Muralla Defensiva">Muralla Defensiva</option>
                 </select>
               </div>
             </div>
-            <textarea id="prospect-names-input" rows="2" placeholder="Ej: TomyJr, Kirox, ValenRL..."></textarea>
-            <button class="btn-primary" style="margin-top:8px;" onclick="addCustomProspectNames()">Registrar Prodigios</button>
-            <div id="queued-names-box" class="queued-list"></div>
+            <button class="btn-primary" onclick="addCustomProspectNames()">Registrar Juvenil(es)</button>
           </div>
 
           <div class="card">
             <div class="card-header">
-              <h3>Canteras y Cesiones</h3>
-              <select id="academy-filter" onchange="renderAcademy()" style="width:auto;margin:0;padding:6px;">
+              <h3>Canteras y Cesiones a Ligas Nacionales</h3>
+              <select id="academy-filter" onchange="renderAcademy()">
                 <option value="MINE">Mi Cantera</option>
-                <option value="WORLD">Canteras de Otros Clubes</option>
+                <option value="WORLD">Canteras Rivales (Ojeador)</option>
               </select>
             </div>
             <div id="academy-players-list" class="academy-list"></div>
@@ -400,159 +443,177 @@
         </div>
       </div>
 
-      <!-- TAB 5: MERCADO Y SPONSORS -->
-      <div id="tab-market" class="game-tab">
-        <div class="dashboard-grid">
+      <!-- TAB 5: MERCADO & SPONSORS -->
+      <div id="tab-market" class="tab-panel">
+        <div class="grid-2">
           <div class="card">
             <div class="card-header">
-              <h3>Mercado de Fichajes</h3>
-              <select id="market-type-filter" onchange="renderMarket()" style="width:auto;margin:0;">
-                <option value="PLAYERS">Jugadores (Compra / Trade)</option>
-                <option value="COACHES">Head Coaches</option>
+              <h3>Mercado de Fichajes e Intercambios</h3>
+              <select id="market-type-filter" onchange="renderMarket()">
+                <option value="PLAYERS">Jugadores</option>
+                <option value="COACHES">Coaches</option>
               </select>
             </div>
             <div id="market-list" class="market-list"></div>
           </div>
+
           <div class="card">
-            <h3>Patrocinadores y Finanzas</h3>
+            <h3>Patrocinadores Oficiales del Club</h3>
+            <p class="muted" style="margin-bottom:12px;">Firmar un sponsor otorga adelanto inmediato y bonos por rendimiento.</p>
             <div id="sponsor-box"></div>
           </div>
         </div>
       </div>
 
-      <!-- TAB 6: SELECCIONES NACIONALES FIFAe -->
-      <div id="tab-national" class="game-tab">
+      <!-- TAB 6: SELECCIÓN NACIONAL FIFAe -->
+      <div id="tab-national" class="tab-panel">
         <div class="card">
           <div class="card-header">
-            <div>
-              <h3>🌍 Federaciones Nacionales & FIFAe World Cup</h3>
-              <p class="muted">Subí tu Reputación de DT a 85+ para recibir ofertas y dirigir una Selección Nacional en paralelo a tu club.</p>
-            </div>
-            <span id="national-role-badge" class="badge">Sin Selección Activa</span>
+            <h3>FIFAe World Cup — Dirección de Selección Nacional</h3>
+            <span class="badge" id="national-role-badge">Sin Selección Activa</span>
           </div>
           <div id="national-team-hub"></div>
         </div>
       </div>
 
-      <!-- TAB 7: CARRERA DE MÁNAGER -->
-      <div id="tab-career" class="game-tab">
-        <div class="dashboard-grid">
+      <!-- TAB 7: CARRERA DE MÁNAGER & INSTALACIONES -->
+      <div id="tab-career" class="tab-panel">
+        <div class="grid-2">
           <div class="card">
             <div class="card-header">
-              <h3>Perfil de Mánager & Instalaciones</h3>
-              <span id="mgr-rep-badge" class="badge">Rep. DT: 75</span>
+              <h3>Tu Perfil de Mánager e Instalaciones del Club</h3>
+              <span class="badge" id="mgr-rep-badge">Reputación: 75</span>
             </div>
             <div id="manager-profile-box"></div>
-            <hr style="border-color:var(--border);margin:14px 0;">
-            <h4>Instalaciones del Club Actual</h4>
+            <h4 style="margin:14px 0 8px;color:var(--primary);">🏢 Infraestructura del Club</h4>
             <div id="club-facilities-box"></div>
-            <hr style="border-color:var(--border);margin:14px 0;">
-            <h4>Trayectoria de Clubes Dirigidos</h4>
-            <div id="manager-history-list" class="news-feed" style="max-height:180px;"></div>
+            <h4 style="margin:14px 0 8px;color:var(--primary);">📋 Trayectoria de Mánager</h4>
+            <div id="manager-history-list" class="news-feed" style="max-height:170px;"></div>
           </div>
 
           <div class="card">
-            <div class="card-header">
-              <h3>Mercado de Banquillos (Cambiar de Equipo)</h3>
-            </div>
-            <p class="muted" style="margin-bottom:10px;">Firmá contrato con otro club según tu Reputación como DT.</p>
+            <h3>Mercado de Banquillos (Cambiar de Equipo)</h3>
+            <p class="muted" style="margin-bottom:10px;">Cuando tu Reputación sube ganando partidos y copas, clubes más grandes te abren sus puertas.</p>
             <div id="available-jobs-list" class="academy-list"></div>
           </div>
         </div>
       </div>
 
-      <!-- TAB 8: GALAS, VITRINA Y RÉCORDS -->
-      <div id="tab-trophies" class="game-tab">
-        <div class="dashboard-grid">
+      <!-- TAB 8: VITRINA, GALAS Y RÉCORDS -->
+      <div id="tab-awards" class="tab-panel">
+        <div class="grid-2">
           <div class="card">
-            <h3>Galas de Premios (Rocket d'Or, Bota de Oro, KDB)</h3>
-            <div id="individual-awards-history" class="news-feed" style="max-height:540px;"></div>
+            <h3>🏅 Galas Individuales & Récords Históricos</h3>
+            <div id="individual-awards-history" class="news-feed" style="max-height:240px;margin-bottom:14px;"></div>
+            <h4 style="margin-bottom:8px;color:var(--accent);">📊 Récords Históricos de Carrera</h4>
+            <div id="all-time-records-box" style="margin-bottom:14px;"></div>
+            <h4 style="margin-bottom:8px;color:var(--primary);">🎖️ Salón de la Fama (Leyendas Retiradas)</h4>
+            <div id="hall-of-fame-list" class="news-feed" style="max-height:170px;"></div>
           </div>
+
           <div class="card">
-            <h3>Vitrina de Trofeos & Récords Históricos</h3>
-            <div id="club-trophy-cabinet" class="trophy-grid"></div>
-            <hr style="border-color:var(--border);margin:16px 0;">
-            <h4>Récords Históricos de Carrera</h4>
-            <div id="all-time-records-box" style="margin-top:8px;"></div>
-            <hr style="border-color:var(--border);margin:16px 0;">
-            <h4>Salón de la Fama (Leyendas Retiradas)</h4>
-            <div id="hall-of-fame-list" class="news-feed" style="max-height:140px;margin-top:8px;"></div>
-            <hr style="border-color:var(--border);margin:16px 0;">
             <div class="card-header">
-              <h4>Historial de Campeones</h4>
-              <select id="history-comp-filter" onchange="renderAwardsAndTrophies()" style="width:auto;margin:0;padding:5px;font-size:0.8rem;">
+              <h3>🏆 Sala de Trofeos & Palmarés</h3>
+              <select id="history-comp-filter" onchange="renderAwardsAndTrophies()">
                 <option value="ALL">Todos los Torneos</option>
-                <option value="rlcs_worlds">Mundial RLCS</option>
-                <option value="paris_major">Paris Major</option>
-                <option value="boston_major">Boston Major</option>
-                <option value="rlcs_regional">Open Regionales</option>
-                <option value="club_wc">Club World Cup</option>
+                <option value="rlcs_worlds">RLCS World Championship</option>
+                <option value="rlcs_major1">RLCS Major 1</option>
+                <option value="rlcs_major2">RLCS Major 2</option>
+                <option value="ewc">Esports World Cup</option>
+                <option value="rlcs_regional">Open Regionals</option>
+                <option value="challenger_cup">Challenger League</option>
               </select>
             </div>
-            <div id="champions-history-list" class="news-feed" style="max-height:180px;"></div>
+            <div id="club-trophy-cabinet" class="trophy-cabinet"></div>
+            <h4 style="margin:14px 0 8px;">Historial de Campeones</h4>
+            <div id="champions-history-list" class="news-feed" style="max-height:240px;"></div>
           </div>
         </div>
       </div>
 
       <!-- TAB 9: EDITOR -->
-      <div id="tab-editor" class="game-tab">
-        <div class="card">
-          <h3>Editor de Jugadores y Coaches</h3>
+      <div id="tab-editor" class="tab-panel">
+        <div class="card" style="max-width:700px;">
+          <h3>Creador de Jugadores y Coaches</h3>
           <div class="form-row">
-            <div class="field"><label>Nickname</label><input type="text" id="edit-person-name" /></div>
-            <div class="field"><label>Tipo</label><select id="edit-person-role"><option value="PLAYER">Jugador</option><option value="COACH">Coach</option></select></div>
-            <div class="field"><label>Rol Táctico</label><select id="edit-person-tactic-role"><option value="Striker">Striker</option><option value="Playmaker">Playmaker</option><option value="Third Man">Third Man</option></select></div>
+            <div class="field">
+              <label>Rol</label>
+              <select id="edit-person-role">
+                <option value="PLAYER">Jugador</option>
+                <option value="COACH">Head Coach</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Nickname</label>
+              <input type="text" id="edit-person-name" placeholder="Ej: Kaydop" />
+            </div>
+            <div class="field">
+              <label>Posición Táctica</label>
+              <select id="edit-person-tactic-role">
+                <option value="Striker">Striker (Goleador)</option>
+                <option value="Playmaker">Playmaker (Creador)</option>
+                <option value="Third Man">Third Man (Defensa/Rotación)</option>
+              </select>
+            </div>
           </div>
           <div class="form-row">
-            <div class="field"><label>País</label><select id="edit-person-country"><option value="AR">Argentina</option><option value="CL">Chile</option><option value="BR">Brasil</option><option value="FR">Francia</option><option value="US">Estados Unidos</option><option value="SA">Arabia Saudita</option></select></div>
-            <div class="field"><label>Edad</label><input type="number" id="edit-person-age" value="16" min="15" max="45" /></div>
-            <div class="field"><label>Media (OVR)</label><input type="number" id="edit-person-ovr" value="86" min="60" max="99" /></div>
-            <div class="field"><label>Potencial</label><input type="number" id="edit-person-pot" value="93" min="65" max="99" /></div>
+            <div class="field">
+              <label>Nacionalidad</label>
+              <select id="edit-person-country">
+                <option value="AR">🇦🇷 Argentina</option>
+                <option value="CL">🇨🇱 Chile</option>
+                <option value="BR">🇧🇷 Brasil</option>
+                <option value="FR">🇫🇷 Francia</option>
+                <option value="US">🇺🇸 Estados Unidos</option>
+                <option value="SA">🇸🇦 Arabia Saudita</option>
+                <option value="ES">🇪🇸 España</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Edad</label>
+              <input type="number" id="edit-person-age" value="17" min="15" max="35" />
+            </div>
+            <div class="field">
+              <label>Media (OVR)</label>
+              <input type="number" id="edit-person-ovr" value="88" min="65" max="99" />
+            </div>
+            <div class="field">
+              <label>Potencial</label>
+              <input type="number" id="edit-person-pot" value="94" min="70" max="99" />
+            </div>
           </div>
-          <div class="field"><label>Asignar a Club</label><select id="edit-person-team"></select></div>
-          <button class="btn-primary" onclick="createCustomPerson()">Guardar en Base de Datos</button>
+          <div class="field" style="margin-bottom:14px;">
+            <label>Asignar a Club</label>
+            <select id="edit-person-team"></select>
+          </div>
+          <button class="btn-primary" onclick="createCustomPerson()">Agregar a la Base de Datos</button>
         </div>
       </div>
+
     </main>
   </section>
 
-  <!-- MODAL FICHA COMPLETA DEL CLUB (CLUB HUB) -->
-  <div id="club-detail-modal" class="modal hidden">
-    <div class="modal-card" style="max-width:780px;max-height:88vh;overflow-y:auto;">
-      <div id="club-detail-content"></div>
-      <div class="modal-actions">
-        <button class="btn-secondary" onclick="closeClubDetailModal()">Cerrar Ficha del Club</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL FICHA INDIVIDUAL DE JUGADOR -->
-  <div id="player-detail-modal" class="modal hidden">
-    <div class="modal-card" style="max-width:560px;max-height:86vh;overflow-y:auto;">
-      <div id="player-detail-content"></div>
-      <div class="modal-actions">
-        <button class="btn-secondary" onclick="closePlayerDetailModal()">Cerrar Perfil</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL NEGOCIACIÓN + INTERCAMBIOS -->
+  <!-- MODAL 1: NEGOCIACIÓN E INTERCAMBIO -->
   <div id="negotiation-modal" class="modal hidden">
-    <div class="modal-card">
-      <h3 id="neg-title">Negociación de Fichaje</h3>
+    <div class="modal-content">
+      <h3 id="neg-title">Negociar Fichaje</h3>
       <p id="neg-subtitle" class="muted"></p>
       <div id="neg-details" class="neg-box"></div>
-      <div class="field">
-        <label>Oferta en Efectivo ($ USD)</label>
-        <input type="number" id="neg-offer-amount" step="5000" />
-      </div>
-      <div class="field">
-        <label>Incluir Jugador como Intercambio (Opcional)</label>
-        <select id="neg-trade-player"></select>
+      <div class="form-row">
+        <div class="field">
+          <label>Oferta en Efectivo ($)</label>
+          <input type="number" id="neg-offer-amount" step="5000" />
+        </div>
+        <div class="field">
+          <label>Incluir Jugador en Intercambio (Opcional)</label>
+          <select id="neg-trade-player">
+            <option value="">Ninguno (Solo dinero)</option>
+          </select>
+        </div>
       </div>
       <div class="form-row">
         <div class="field">
-          <label>Duración Contrato</label>
+          <label>Duración del Contrato</label>
           <select id="neg-contract-years">
             <option value="1">1 Temporada</option>
             <option value="2" selected>2 Temporadas</option>
@@ -563,92 +624,97 @@
           <label>Rol Prometido</label>
           <select id="neg-role-promise">
             <option value="STARTER">Titular Indiscutido</option>
-            <option value="SUB">Suplente / Rotación</option>
+            <option value="SUB">Rotación / Suplente</option>
           </select>
         </div>
       </div>
       <div id="neg-feedback" class="neg-feedback hidden"></div>
       <div class="modal-actions">
-        <button class="btn-success" onclick="submitTransferOffer()">Enviar Oferta</button>
         <button class="btn-secondary" onclick="closeNegotiationModal()">Cancelar</button>
+        <button class="btn-primary" onclick="submitTransferOffer()">Enviar Oferta Oficial</button>
       </div>
     </div>
   </div>
 
-  <!-- MODAL CONFERENCIA DE PRENSA -->
-  <div id="press-modal" class="modal hidden">
-    <div class="modal-card">
-      <h3>🎙️ Conferencia de Prensa Pre-Final</h3>
-      <p id="press-question" style="margin:12px 0;font-size:1.02rem;"></p>
-      <div style="display:flex;flex-direction:column;gap:8px;">
-        <button class="btn-primary" onclick="answerPressConference('CONFIDENT')">🔥 "Somos los mejores y vamos a barrer la final" (+1 OVR / Riesgo Moral)</button>
-        <button class="btn-success" onclick="answerPressConference('HUMBLE')">🤝 "Respetamos al rival, confiamos en nuestra química" (+3 Química)</button>
-        <button class="btn-secondary" onclick="answerPressConference('CALM')">🧘 "No tenemos presión, vamos a disfrutar" (+12% Energía Mental)</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL RESULTADO MANUAL -->
-  <div id="manual-modal" class="modal hidden">
-    <div class="modal-card">
-      <h3>Ingresar Resultado Real</h3>
-      <p id="manual-match-label" class="muted"></p>
-      <div class="form-row" style="margin-top:14px;">
-        <div class="field"><label>Mapas Tu Equipo</label><input type="number" id="manual-score-home" min="0" max="4" value="3" /></div>
-        <div class="field"><label>Mapas Rival</label><input type="number" id="manual-score-away" min="0" max="4" value="1" /></div>
-      </div>
-      <div class="modal-actions">
-        <button class="btn-primary" onclick="submitManualResult()">Confirmar</button>
-        <button class="btn-secondary" onclick="closeManualResultModal()">Cancelar</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL CEREMONIA DE CAMPEÓN -->
+  <!-- MODAL 2: CEREMONIA DE CAMPEÓN -->
   <div id="champion-modal" class="modal hidden">
-    <div class="modal-card champion-ceremony">
+    <div class="modal-content champion-card">
       <div id="champ-trophy-icon"></div>
       <h2 id="champ-tournament-name">¡CAMPEONES!</h2>
-      <h1 id="champ-team-name">EQUIPO</h1>
-      <p id="champ-roster-names" class="champ-roster"></p>
-      <div class="mvp-pill" id="champ-mvp-badge">MVP DEL TORNEO</div>
-      <p id="champ-prize-text" class="money"></p>
-      <div id="champ-star-choice" class="hidden" style="margin-top:14px;padding:12px;background:rgba(250,204,21,0.12);border:1px solid #facc15;border-radius:10px;">
-        <strong>⭐ ¡CAMPEÓN DEL MUNDO RLCS!</strong>
-        <p class="muted" style="margin:6px 0 10px;">¿Querés agregar una estrella dorada permanente encima del escudo de tu club?</p>
-        <div style="display:flex;gap:10px;justify-content:center;">
-          <button class="btn-warning" onclick="confirmWorldChampionStar(true)">⭐ Sí, Bordar Estrella</button>
-          <button class="btn-secondary" onclick="confirmWorldChampionStar(false)">Mantener Escudo Clásico</button>
+      <h3 id="champ-team-name">Equipo</h3>
+      <p id="champ-roster-names" class="muted"></p>
+      <div id="champ-mvp-badge" class="mvp-pill">MVP</div>
+      <p id="champ-prize-text" class="money" style="margin:12px 0;font-size:1.1rem;"></p>
+
+      <div id="champ-star-choice" class="star-choice-box hidden">
+        <p><strong>🌟 ¡GANASTE EL MUNDIAL RLCS!</strong> ¿Querés bordar una estrella dorada encima del escudo de tu club?</p>
+        <div style="display:flex;gap:10px;justify-content:center;margin-top:10px;">
+          <button class="btn-warning" onclick="confirmWorldChampionStar(true)">Sí, Bordar Estrella ⭐</button>
+          <button class="btn-secondary" onclick="confirmWorldChampionStar(false)">No, mantener escudo</button>
         </div>
       </div>
-      <button id="btn-close-champ-modal" class="btn-primary" style="margin-top:16px;" onclick="closeChampionModal()">Levantar la Copa</button>
+
+      <button id="btn-close-champ-modal" class="btn-primary" onclick="closeChampionModal()">Continuar Carrera</button>
     </div>
   </div>
 
-  <!-- MODAL GALA DE PREMIOS -->
+  <!-- MODAL 3: GALA DE PREMIOS INDIVIDUALES -->
   <div id="gala-modal" class="modal hidden">
-    <div class="modal-card gala-card">
-      <h2>🏆 GALA OFICIAL DE FIN DE TEMPORADA</h2>
-      <p id="gala-season-title" class="muted"></p>
-      <div id="gala-awards-content" class="gala-grid"></div>
-      <button class="btn-primary" style="margin-top:18px;width:100%;" onclick="closeGalaModal()">Ir al Scouting Combine de Pretemporada</button>
+    <div class="modal-content champion-card">
+      <h2>🏅 GALA OFICIAL DE PREMIOS RLCS</h2>
+      <p id="gala-season-title" class="muted" style="margin-bottom:12px;"></p>
+      <div id="gala-awards-content" class="gala-list"></div>
+      <button class="btn-primary" style="margin-top:14px;" onclick="closeGalaModal()">Ir al Scouting Combine de Novatos</button>
     </div>
   </div>
 
-  <!-- MODAL SCOUTING COMBINE -->
+  <!-- MODAL 4: SCOUTING COMBINE (DRAFT ANUAL) -->
   <div id="combine-modal" class="modal hidden">
-    <div class="modal-card">
-      <h3>🎯 Scouting Combine de Pretemporada</h3>
-      <p class="muted" style="margin-bottom:12px;">Elegí 1 promesa de 15 años recién salida de Ranked para sumarla gratis a tu roster.</p>
+    <div class="modal-content">
+      <h3>🎯 RLCS Scouting Combine — Draft de Novatos</h3>
+      <p class="muted" style="margin-bottom:12px;">Elegí 1 de estas 3 promesas recién salidas del circuito amateur para sumarla gratis a tu equipo:</p>
       <div id="combine-prospects-list" class="academy-list"></div>
       <div class="modal-actions">
-        <button class="btn-secondary" onclick="closeCombineModal()">Omitir Draft</button>
+        <button class="btn-secondary" onclick="closeCombineModal()">Saltar Draft</button>
       </div>
     </div>
   </div>
 
-  <script src="js/graphics.js"></script>
+  <!-- MODAL 5: RUEDA DE PRENSA -->
+  <div id="press-modal" class="modal hidden">
+    <div class="modal-content">
+      <h3>🎙️ Rueda de Prensa Pre-Final</h3>
+      <p id="press-question" style="margin:10px 0;"></p>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;">
+        <button class="btn-primary" onclick="answerPressConference('CONFIDENT')">"Vamos a pasarles por encima" (+1 OVR en la Final)</button>
+        <button class="btn-success" onclick="answerPressConference('HUMBLE')">"Respetamos al rival, confiamos en nuestro juego" (+3 Química)</button>
+        <button class="btn-secondary" onclick="answerPressConference('CALM')">"Sin presión, a disfrutar el escenario" (+12% Energía)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 6: FICHA COMPLETA DE CLUB (CLUB HUB) -->
+  <div id="club-detail-modal" class="modal hidden">
+    <div class="modal-content modal-wide">
+      <div id="club-detail-content"></div>
+      <div class="modal-actions">
+        <button class="btn-primary" onclick="closeClubDetailModal()">Cerrar Ficha del Club</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 7: FICHA INDIVIDUAL DE JUGADOR -->
+  <div id="player-detail-modal" class="modal hidden">
+    <div class="modal-content">
+      <div id="player-detail-content"></div>
+      <div class="modal-actions">
+        <button class="btn-primary" onclick="closePlayerDetailModal()">Cerrar Perfil</button>
+      </div>
+    </div>
+  </div>
+
   <script src="js/data.js"></script>
+  <script src="js/graphics.js"></script>
   <script src="js/engine.js"></script>
 </body>
 </html>
