@@ -5,7 +5,7 @@ let GameState = {
   teams: [],
   players: [],
   coaches: [],
-  academyProspects: [], // Incluye tus canteranos y los de otros clubes del mundo
+  academyProspects: [],
   customNameQueue: [],
   nationalTables: {},
   currentBracket: { qf: [], sf: [], gf: [] },
@@ -13,9 +13,12 @@ let GameState = {
   championsHistory: [],
   awardsHistory: [],
   hallOfFame: [],
+  headToHead: {},
+  careerStats: { wins: 0, losses: 0, youthSales: 0 },
   activeSponsor: null,
   bootcampActive: false,
   incomingOffer: null,
+  lockerEvent: null,
   news: [],
   currentOpponentId: null,
   selectedCompView: "rlcs_regional",
@@ -24,23 +27,31 @@ let GameState = {
 
 let LiveMatch = {
   active: false,
+  running: false,
+  timerId: null,
+  secondsLeft: 300, // 5:00 = 300 segundos de juego
+  speedMultiplier: 1, // 1x = 1 min de juego cada 5 seg reales (12s juego por 1s real)
   homeWins: 0,
   awayWins: 0,
   winsNeeded: 3,
   gameNum: 1,
+  gHome: 0,
+  gAway: 0,
   tactic: "balanced",
   timeoutUsed: false,
-  timeoutBoostActive: false
+  timeoutBoostActive: false,
+  zeroSecOffered: false
 };
 
 let ActiveNegotiationPlayerId = null;
+let CombinePool = [];
 
 // INICIALIZACIÓN
 window.onload = () => {
   document.getElementById("hero-logo").innerHTML = Graphics.renderTrophy("rlcs_worlds", 68);
   updateCustomCrestPreview();
   renderSetupTeams();
-  if (localStorage.getItem("rl_career_save_v3")) {
+  if (localStorage.getItem("rl_career_save_v4")) {
     document.getElementById("btn-continue-save").style.display = "inline-block";
   }
 };
@@ -96,11 +107,13 @@ function startWithCustomTeam() {
   const pattern = document.getElementById("custom-crest-pattern").value;
   const color1 = document.getElementById("custom-color-1").value;
   const color2 = document.getElementById("custom-color-2").value;
+  const car = document.getElementById("custom-car-body").value;
   const logoUrl = document.getElementById("custom-logo-url").value.trim();
 
   const customTeam = {
     id: "custom_user",
-    name, tag, region, rep: 72, stars: 0, color1, color2, shape, pattern, logoUrl,
+    name, tag, region, rep: 72, stars: 0, car, arena: "Champions Field",
+    color1, color2, shape, pattern, logoUrl,
     budget: 240000,
     points: 0
   };
@@ -157,9 +170,12 @@ function initBaseState() {
   GameState.championsHistory = [];
   GameState.awardsHistory = [];
   GameState.hallOfFame = [];
+  GameState.headToHead = {};
+  GameState.careerStats = { wins: 0, losses: 0, youthSales: 0 };
   GameState.activeSponsor = null;
   GameState.bootcampActive = false;
   GameState.incomingOffer = null;
+  GameState.lockerEvent = null;
   GameState.news = [];
   buildNationalTables();
   spawnInitialProspects();
@@ -176,22 +192,25 @@ function buildNationalTables() {
 
 function spawnInitialProspects() {
   const starters = [
-    { name: "TomyRL", country: "AR", age: 13, rank: "GC3", pot: 96, ownerId: "USER" },
-    { name: "Kirox", country: "CL", age: 12, rank: "GC2", pot: 94, ownerId: "USER" },
-    { name: "Zynx", country: "FR", age: 14, rank: "SSL", pot: 96, ownerId: "kc" },
-    { name: "Dante", country: "BR", age: 13, rank: "GC3", pot: 93, ownerId: "fur" }
+    { name: "TomyRL", country: "AR", tpl: "GC2_13", arch: "Cerebro Táctico", isMine: true },
+    { name: "Kirox", country: "CL", tpl: "C3_12", arch: "Diamante en Bruto", isMine: true },
+    { name: "Zynx", country: "FR", tpl: "GC3_14", arch: "Freestyler", isMine: false, clubId: "kc" },
+    { name: "Dante", country: "BR", tpl: "GC1_13", arch: "Ranked Demon 1v1", isMine: false, clubId: "fur" }
   ];
   starters.forEach((s, idx) => {
+    const t = InitialData.youthTemplates.find(x => x.code === s.tpl) || InitialData.youthTemplates[0];
+    const pot = Math.floor(Math.random() * (t.potMax - t.potMin + 1)) + t.potMin;
     GameState.academyProspects.push({
       id: "acad_" + Date.now() + "_" + idx,
       name: s.name,
       country: s.country,
-      age: s.age,
-      rank: s.rank,
-      ovr: s.rank === "SSL" ? 81 : (s.rank === "GC3" ? 77 : 73),
-      pot: s.pot,
-      ownerTeamId: s.ownerId === "USER" ? null : s.ownerId, // null = pertenece al usuario
-      isUserAcademy: s.ownerId === "USER",
+      age: t.age,
+      rank: t.rank,
+      archetype: s.arch,
+      ovr: t.ovr,
+      pot,
+      ownerTeamId: s.isMine ? null : s.clubId,
+      isUserAcademy: s.isMine,
       loanLeagueId: null,
       loanClub: null,
       loanGoals: 0,
@@ -201,7 +220,6 @@ function spawnInitialProspects() {
 }
 
 function launchGameUI() {
-  // Asegurar que los canteranos iniciales del usuario tengan su ID real
   GameState.academyProspects.forEach(p => {
     if (p.isUserAcademy) p.ownerTeamId = GameState.userTeamId;
   });
@@ -213,7 +231,7 @@ function launchGameUI() {
   saveGame(false);
 }
 
-// HELPERS Y CÁLCULO DE QUÍMICA / OVR
+// HELPERS Y QUÍMICA
 function getUserTeam() { return GameState.teams.find(t => t.id === GameState.userTeamId); }
 function getTeamById(id) { return GameState.teams.find(t => t.id === id); }
 function getTeamRoster(teamId, onlyStarters = false) {
@@ -226,12 +244,10 @@ function getTeamChemistry(teamId) {
   if (starters.length < 3) return 70;
   let chem = 78;
 
-  // Bono por combinación de roles tácticos (Striker + Playmaker + Third Man)
   const rolesSet = new Set(starters.map(p => p.role || "Striker"));
   if (rolesSet.size === 3) chem += 12;
   else if (rolesSet.size === 2) chem += 5;
 
-  // Bono por compartir nacionalidad
   const countries = starters.map(p => p.country);
   if (countries[0] === countries[1] && countries[1] === countries[2]) chem += 8;
   else if (new Set(countries).size === 2) chem += 4;
@@ -253,7 +269,7 @@ function getTeamOvr(teamId) {
 
 function addNews(text, type = "normal") {
   GameState.news.unshift({ text, type, season: GameState.season });
-  if (GameState.news.length > 40) GameState.news.pop();
+  if (GameState.news.length > 45) GameState.news.pop();
 }
 
 // NAVEGACIÓN
@@ -274,11 +290,11 @@ function refreshAllUI() {
 
   document.getElementById("top-club-crest").innerHTML = Graphics.renderCrest(team, 46);
   document.getElementById("top-club-name").textContent = team.name;
-  document.getElementById("top-club-meta").textContent = `${team.region} • OVR ${ovr} • Química ${chem}%`;
+  document.getElementById("top-club-meta").textContent = `${team.region} • OVR ${ovr} • Química ${chem}% • Auto: ${team.car || "Fennec"}`;
   document.getElementById("top-season").textContent = GameState.season;
   document.getElementById("top-stage").textContent = stage.compName;
   document.getElementById("top-budget").textContent = "$" + team.budget.toLocaleString();
-  document.getElementById("top-points").textContent = team.points + " pts";
+  document.getElementById("top-points").textContent = `${GameState.careerStats.wins}W-${GameState.careerStats.losses}L • ${team.points} pts`;
 
   renderOffice();
   renderCompetitionView();
@@ -361,7 +377,7 @@ function updateBracketProgress(userWon, oppTeam, homeWins, awayWins) {
   }
 }
 
-// 1. OFICINA, BOOTCAMP Y PARTIDOS
+// 1. OFICINA, RIVALIDADES, EVENTOS DE VESTUARIO Y PARTIDOS
 function pickNextOpponent() {
   const userTeam = getUserTeam();
   const stage = InitialData.seasonSchedule[GameState.scheduleIndex];
@@ -376,10 +392,7 @@ function pickNextOpponent() {
 
 function buyLanBootcamp() {
   const userTeam = getUserTeam();
-  if (userTeam.budget < 35000) {
-    alert("Necesitás $35,000 para organizar un Bootcamp internacional.");
-    return;
-  }
+  if (userTeam.budget < 35000) return alert("Necesitás $35,000 para organizar un Bootcamp.");
   userTeam.budget -= 35000;
   GameState.bootcampActive = true;
   addNews(`✈️ ${userTeam.name} completó un Bootcamp intensivo previo al evento LAN (+2 OVR y +3 Química).`);
@@ -392,8 +405,18 @@ function renderOffice() {
   const stage = InitialData.seasonSchedule[GameState.scheduleIndex];
 
   document.getElementById("next-event-title").textContent = stage.compName;
-  document.getElementById("next-round-subtitle").textContent = `${stage.roundName} • Formato ${stage.format}`;
+  document.getElementById("next-round-subtitle").textContent = `${stage.roundName} • Formato ${stage.format} • Arena: ${userTeam.arena || "Champions Field"}`;
   document.getElementById("next-event-trophy").innerHTML = Graphics.renderTrophy(stage.compId, 44);
+
+  // Rivalidad histórica si ya jugaron 3+ veces
+  const h2h = GameState.headToHead[opp.id] || { w: 0, l: 0 };
+  const rivBanner = document.getElementById("rivalry-banner");
+  if (h2h.w + h2h.l >= 3) {
+    rivBanner.classList.remove("hidden");
+    rivBanner.textContent = `🔥 RIVALIDAD HISTÓRICA (EL CLÁSICO) • Historial vs ${opp.name}: ${h2h.w} Victorias - ${h2h.l} Derrotas`;
+  } else {
+    rivBanner.classList.add("hidden");
+  }
 
   const isLan = stage.compId !== "rlcs_regional";
   const campBanner = document.getElementById("bootcamp-banner");
@@ -408,7 +431,7 @@ function renderOffice() {
     <div class="vs-team">
       ${Graphics.renderCrest(userTeam, 64)}
       <strong>${homeTitle}</strong>
-      <span class="badge">OVR ${getTeamOvr(userTeam.id)}</span>
+      <span class="badge">OVR ${getTeamOvr(userTeam.id)} • ${userTeam.car || "Fennec"}</span>
     </div>
     <div class="vs-center">
       <div class="vs-badge">VS</div>
@@ -417,20 +440,38 @@ function renderOffice() {
     <div class="vs-team">
       ${Graphics.renderCrest(opp, 64)}
       <strong>${awayTitle}</strong>
-      <span class="badge">OVR ${getTeamOvr(opp.id)}</span>
+      <span class="badge">OVR ${getTeamOvr(opp.id)} • ${opp.car || "Octane"}</span>
     </div>
   `;
 
-  // Ofertas recibidas por tus jugadores
+  // Evento aleatorio de vestuario/prensa
+  const lockerBox = document.getElementById("locker-event-box");
+  if (GameState.lockerEvent) {
+    const ev = GameState.lockerEvent;
+    lockerBox.innerHTML = `
+      <div class="offer-alert" style="border-color:var(--accent);background:rgba(245,158,11,0.12);">
+        <strong>🎙️ EVENTO DE VESTUARIO:</strong> ${ev.text}
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="btn-warning btn-sm" onclick="resolveLockerEvent(true)">${ev.yesLabel}</button>
+          <button class="btn-secondary btn-sm" onclick="resolveLockerEvent(false)">${ev.noLabel}</button>
+        </div>
+      </div>
+    `;
+  } else {
+    lockerBox.innerHTML = "";
+  }
+
+  // Ofertas entrantes por tus jugadores
   const offerBox = document.getElementById("incoming-offer-box");
   if (GameState.incomingOffer) {
     const o = GameState.incomingOffer;
     offerBox.innerHTML = `
       <div class="offer-alert">
         <strong>📩 ¡OFERTA RECIBIDA!</strong> <strong>${o.buyerName}</strong> ofrece <strong>$${o.amount.toLocaleString()}</strong> por tu jugador <strong>${o.playerName}</strong>.
-        <div style="display:flex;gap:8px;margin-top:8px;">
-          <button class="btn-success btn-sm" onclick="respondIncomingOffer(true)">Aceptar Venta</button>
-          <button class="btn-danger-outline btn-sm" onclick="respondIncomingOffer(false)">Rechazar</button>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+          <button class="btn-success btn-sm" onclick="respondIncomingOffer('ACCEPT')">Aceptar Venta</button>
+          <button class="btn-warning btn-sm" onclick="respondIncomingOffer('COUNTER')">Pedir +20% ($${Math.round(o.amount * 1.2).toLocaleString()})</button>
+          <button class="btn-danger-outline btn-sm" onclick="respondIncomingOffer('REJECT')">Rechazar</button>
         </div>
       </div>
     `;
@@ -445,16 +486,48 @@ function renderOffice() {
   `).join("");
 }
 
-function respondIncomingOffer(accept) {
-  const o = GameState.incomingOffer;
-  if (!o) return;
-  if (accept) {
-    const userTeam = getUserTeam();
-    const roster = getTeamRoster(userTeam.id, false);
-    if (roster.length <= 3) {
-      alert("No podés venderlo porque te quedarías con menos de 3 jugadores.");
+function resolveLockerEvent(accepted) {
+  const ev = GameState.lockerEvent;
+  if (!ev) return;
+  const userTeam = getUserTeam();
+  if (accepted) {
+    if (userTeam.budget < ev.cost) {
+      alert("Presupuesto insuficiente para aceptar esta opción.");
       return;
     }
+    userTeam.budget -= ev.cost;
+    const p = GameState.players.find(pl => pl.id === ev.playerId);
+    if (p) p.streak = 3;
+    addNews(`✅ ${ev.winMsg}`);
+  } else {
+    addNews(`❌ ${ev.loseMsg}`);
+  }
+  GameState.lockerEvent = null;
+  refreshAllUI();
+}
+
+function respondIncomingOffer(action) {
+  const o = GameState.incomingOffer;
+  if (!o) return;
+  const userTeam = getUserTeam();
+  const roster = getTeamRoster(userTeam.id, false);
+
+  if (action === "COUNTER") {
+    if (Math.random() < 0.65) {
+      o.amount = Math.round(o.amount * 1.2);
+      addNews(`💬 ${o.buyerName} aceptó tu contraoferta y subió la oferta a $${o.amount.toLocaleString()} por ${o.playerName}.`);
+      refreshAllUI();
+      return;
+    } else {
+      addNews(`❌ ${o.buyerName} rechazó tu contraoferta y retiró el interés por ${o.playerName}.`);
+      GameState.incomingOffer = null;
+      refreshAllUI();
+      return;
+    }
+  }
+
+  if (action === "ACCEPT") {
+    if (roster.length <= 3) return alert("No podés venderlo porque te quedarías con menos de 3 jugadores.");
     const player = GameState.players.find(p => p.id === o.playerId);
     if (player) {
       userTeam.budget += o.amount;
@@ -469,24 +542,37 @@ function respondIncomingOffer(accept) {
   refreshAllUI();
 }
 
-// EN VIVO MAPA POR MAPA
+// RELOJ EN VIVO ESTILO WORLD SOCCER CHAMPS (5:00 -> 0:00, 1 min cada 5 seg reales)
+function formatClock(sec) {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${s < 10 ? "0" : ""}${s}`;
+}
+
 function startLiveSeries() {
   const userTeam = getUserTeam();
   const opp = getTeamById(GameState.currentOpponentId);
   const stage = InitialData.seasonSchedule[GameState.scheduleIndex];
 
+  clearInterval(LiveMatch.timerId);
   LiveMatch = {
-    active: true, homeWins: 0, awayWins: 0,
+    active: true, running: false, timerId: null,
+    secondsLeft: 300, speedMultiplier: 1,
+    homeWins: 0, awayWins: 0,
     winsNeeded: stage.format === "Bo7" ? 4 : 3,
-    gameNum: 1, tactic: "balanced", timeoutUsed: false, timeoutBoostActive: false
+    gameNum: 1, gHome: 0, gAway: 0,
+    tactic: "balanced", timeoutUsed: false, timeoutBoostActive: false, zeroSecOffered: false
   };
 
   document.getElementById("match-controls").classList.add("hidden");
   document.getElementById("live-series-panel").classList.remove("hidden");
   document.getElementById("btn-play-next-map").classList.remove("hidden");
+  document.getElementById("btn-play-next-map").textContent = "Arrancar Reloj del Juego 1 (5:00)";
+  document.getElementById("btn-skip-map").classList.add("hidden");
   document.getElementById("btn-finish-series").classList.add("hidden");
+  document.getElementById("zero-second-alert").classList.add("hidden");
   document.getElementById("btn-timeout").disabled = false;
-  document.getElementById("btn-timeout").textContent = "Pedir Timeout (1 disp.)";
+  document.getElementById("btn-timeout").textContent = "Timeout (1)";
 
   document.getElementById("live-home-name").textContent = userTeam.tag;
   document.getElementById("live-away-name").textContent = opp.tag;
@@ -496,6 +582,11 @@ function startLiveSeries() {
   document.getElementById("live-map-score").textContent = "0 - 0";
   document.getElementById("live-clock").textContent = "5:00";
   document.getElementById("live-events-log").innerHTML = `<div>🎙️ ¡Serie en vivo: <strong>${userTeam.name}</strong> vs <strong>${opp.name}</strong>!</div>`;
+}
+
+function toggleClockSpeed() {
+  LiveMatch.speedMultiplier = LiveMatch.speedMultiplier === 1 ? 2 : 1;
+  document.getElementById("btn-speed-toggle").textContent = LiveMatch.speedMultiplier === 1 ? "Vel: 1x (5s/min)" : "Vel: 2x (Rápido)";
 }
 
 function changeLiveTactic() {
@@ -519,9 +610,43 @@ function logLiveEvent(html) {
   logBox.scrollTop = logBox.scrollHeight;
 }
 
-function playNextLiveMap() {
-  if (!LiveMatch.active) return;
+function startLiveMapTimer() {
+  if (!LiveMatch.active || LiveMatch.running) return;
+  LiveMatch.running = true;
+  LiveMatch.secondsLeft = 300;
+  LiveMatch.gHome = 0;
+  LiveMatch.gAway = 0;
+  LiveMatch.zeroSecOffered = false;
 
+  document.getElementById("live-map-score").textContent = "0 - 0";
+  document.getElementById("live-clock").textContent = "5:00";
+  document.getElementById("btn-play-next-map").classList.add("hidden");
+  document.getElementById("btn-skip-map").classList.remove("hidden");
+  document.getElementById("zero-second-alert").classList.add("hidden");
+
+  logLiveEvent(`<hr style="border-color:#1e293b;margin:6px 0;"><strong>▶ KICKOFF — JUEGO ${LiveMatch.gameNum} (5:00):</strong>`);
+
+  // Cada 1 segundo real baja 12 segundos del reloj de Rocket League (= 1 minuto de juego cada 5 segundos reales)
+  LiveMatch.timerId = setInterval(() => {
+    const step = 12 * LiveMatch.speedMultiplier;
+    LiveMatch.secondsLeft = Math.max(0, LiveMatch.secondsLeft - step);
+    document.getElementById("live-clock").textContent = formatClock(LiveMatch.secondsLeft);
+
+    simulateTickEvent(LiveMatch.secondsLeft);
+
+    // Alerta de último ataque a los 0:15 si está empatado o perdiendo por 1
+    if (LiveMatch.secondsLeft <= 24 && LiveMatch.secondsLeft > 0 && !LiveMatch.zeroSecOffered && (LiveMatch.gHome === LiveMatch.gAway || LiveMatch.gAway - LiveMatch.gHome === 1)) {
+      LiveMatch.zeroSecOffered = true;
+      document.getElementById("zero-second-alert").classList.remove("hidden");
+    }
+
+    if (LiveMatch.secondsLeft <= 0) {
+      finishCurrentLiveMap();
+    }
+  }, 1000);
+}
+
+function simulateTickEvent(secLeft) {
   const userTeam = getUserTeam();
   const opp = getTeamById(GameState.currentOpponentId);
   const stage = InitialData.seasonSchedule[GameState.scheduleIndex];
@@ -531,71 +656,108 @@ function playNextLiveMap() {
 
   let homeOvr = getTeamOvr(userTeam.id);
   let awayOvr = getTeamOvr(opp.id);
-
   if (coach && coach.specialty.includes("Estratega LAN") && stage.compId !== "rlcs_regional") homeOvr += 3;
-  if (LiveMatch.timeoutBoostActive) {
-    homeOvr += 5;
-    LiveMatch.timeoutBoostActive = false;
-  }
+  if (LiveMatch.timeoutBoostActive) homeOvr += 5;
 
-  let tacticSwing = LiveMatch.tactic === "aggressive" ? 1 : (LiveMatch.tactic === "defensive" ? -0.5 : 0);
   const diff = homeOvr - awayOvr;
-  const homeChance = Math.min(0.86, Math.max(0.14, 0.50 + diff * 0.035));
+  const homeChance = Math.min(0.84, Math.max(0.16, 0.50 + diff * 0.032));
+  const eventProb = LiveMatch.tactic === "aggressive" ? 0.16 : (LiveMatch.tactic === "defensive" ? 0.09 : 0.12);
 
-  let gHome = 0, gAway = 0;
-  const minutes = ["4:18", "3:11", "1:52", "0:29"];
-  logLiveEvent(`<hr style="border-color:#1e293b;margin:6px 0;"><strong>▶ JUEGO ${LiveMatch.gameNum}:</strong>`);
-
-  minutes.forEach(min => {
-    if (Math.random() < 0.68) {
-      if (Math.random() < homeChance) {
-        gHome++;
-        const scorer = homeStarters[Math.floor(Math.random() * homeStarters.length)];
-        const assister = homeStarters.find(p => p.id !== scorer?.id);
-        if (scorer) scorer.goals++;
-        if (assister && Math.random() > 0.3) assister.assists++;
-        logLiveEvent(`⏱️ [${min}] ⚽ ¡GOL DE <strong>${scorer?.name}</strong>${assister ? ` (Asist. ${assister.name})` : ""}!`);
-      } else {
-        gAway++;
-        const scorer = awayStarters[Math.floor(Math.random() * awayStarters.length)];
-        const keeper = homeStarters.find(p => p.role === "Third Man") || homeStarters[0];
-        if (scorer) scorer.goals++;
-        if (keeper && Math.random() > 0.5) keeper.saves++;
-        logLiveEvent(`⏱️ [${min}] ⚽ Gol de <strong>${scorer?.name}</strong> (${opp.tag}).`);
-      }
+  if (Math.random() < eventProb) {
+    const timeStr = formatClock(secLeft);
+    if (Math.random() < homeChance) {
+      LiveMatch.gHome++;
+      const scorer = homeStarters[Math.floor(Math.random() * homeStarters.length)];
+      const assister = homeStarters.find(p => p.id !== scorer?.id);
+      if (scorer) scorer.goals++;
+      if (assister && Math.random() > 0.3) assister.assists++;
+      document.getElementById("live-map-score").textContent = `${LiveMatch.gHome} - ${LiveMatch.gAway}`;
+      logLiveEvent(`⏱️ [${timeStr}] ⚽ ¡GOLAZO DE <strong>${scorer?.name}</strong>${assister ? ` (Asist. ${assister.name})` : ""}!`);
+    } else {
+      LiveMatch.gAway++;
+      const scorer = awayStarters[Math.floor(Math.random() * awayStarters.length)];
+      const keeper = homeStarters.find(p => p.role === "Third Man") || homeStarters[0];
+      if (scorer) scorer.goals++;
+      if (keeper && Math.random() > 0.55) keeper.saves++;
+      document.getElementById("live-map-score").textContent = `${LiveMatch.gHome} - ${LiveMatch.gAway}`;
+      logLiveEvent(`⏱️ [${timeStr}] ⚽ Gol de <strong>${scorer?.name}</strong> (${opp.tag}).`);
     }
-  });
+  }
+}
+
+function triggerZeroSecondPlay(allIn) {
+  document.getElementById("zero-second-alert").classList.add("hidden");
+  const homeStarters = getTeamRoster(getUserTeam().id, true);
+  const hero = homeStarters[0];
+  if (allIn) {
+    if (Math.random() < 0.52) {
+      LiveMatch.gHome++;
+      if (hero) hero.goals++;
+      document.getElementById("live-map-score").textContent = `${LiveMatch.gHome} - ${LiveMatch.gAway}`;
+      logLiveEvent(`🔥 <strong>[0:00 ZERO-SECOND DRIBBLE]</strong> ¡${hero?.name} la mantiene en el techo y mete un gol agónico!`);
+    } else {
+      LiveMatch.gAway++;
+      document.getElementById("live-map-score").textContent = `${LiveMatch.gHome} - ${LiveMatch.gAway}`;
+      logLiveEvent(`💥 <strong>[0:00]</strong> Perdieron el balón sin arquero y ${getTeamById(GameState.currentOpponentId).tag} liquidó de contra.`);
+    }
+  } else {
+    logLiveEvent(`🛡️ El equipo asegura la posesión defensiva en los últimos segundos.`);
+  }
+}
+
+function skipCurrentLiveMap() {
+  if (!LiveMatch.running) return;
+  while (LiveMatch.secondsLeft > 0) {
+    LiveMatch.secondsLeft = Math.max(0, LiveMatch.secondsLeft - 24);
+    simulateTickEvent(LiveMatch.secondsLeft);
+  }
+  finishCurrentLiveMap();
+}
+
+function finishCurrentLiveMap() {
+  clearInterval(LiveMatch.timerId);
+  LiveMatch.running = false;
+  LiveMatch.timeoutBoostActive = false;
+  document.getElementById("btn-skip-map").classList.add("hidden");
+  document.getElementById("zero-second-alert").classList.add("hidden");
+
+  const userTeam = getUserTeam();
+  const opp = getTeamById(GameState.currentOpponentId);
+  const homeStarters = getTeamRoster(userTeam.id, true);
 
   let otText = "";
-  if (gHome === gAway) {
-    otText = " (OVERTIME)";
-    if (Math.random() < homeChance + tacticSwing * 0.02) {
-      gHome++;
-      const hero = homeStarters[0];
-      if (hero) hero.goals++;
-      logLiveEvent(`🔥 <strong>¡GOL DE ORO EN OVERTIME DE ${hero?.name}!</strong>`);
+  if (LiveMatch.gHome === LiveMatch.gAway) {
+    otText = " +OT";
+    const homeOvr = getTeamOvr(userTeam.id);
+    const awayOvr = getTeamOvr(opp.id);
+    const chance = Math.min(0.82, Math.max(0.18, 0.50 + (homeOvr - awayOvr) * 0.03));
+    if (Math.random() < chance) {
+      LiveMatch.gHome++;
+      if (homeStarters[0]) homeStarters[0].goals++;
+      logLiveEvent(`🔥 <strong>¡GOL DE ORO EN OVERTIME DE ${homeStarters[0]?.name}!</strong>`);
     } else {
-      gAway++;
+      LiveMatch.gAway++;
       logLiveEvent(`💔 Gol de oro en Overtime para ${opp.tag}.`);
     }
   }
 
-  if (gHome > gAway) LiveMatch.homeWins++;
+  if (LiveMatch.gHome > LiveMatch.gAway) LiveMatch.homeWins++;
   else LiveMatch.awayWins++;
 
   document.getElementById("live-home-series").textContent = LiveMatch.homeWins;
   document.getElementById("live-away-series").textContent = LiveMatch.awayWins;
-  document.getElementById("live-map-score").textContent = `${gHome} - ${gAway}`;
+  document.getElementById("live-map-score").textContent = `${LiveMatch.gHome} - ${LiveMatch.gAway}`;
   document.getElementById("live-clock").textContent = `0:00${otText}`;
 
   if (LiveMatch.homeWins >= LiveMatch.winsNeeded || LiveMatch.awayWins >= LiveMatch.winsNeeded) {
     LiveMatch.active = false;
     logLiveEvent(`<br>🏆 <strong>SERIE FINALIZADA: ${userTeam.tag} ${LiveMatch.homeWins} - ${LiveMatch.awayWins} ${opp.tag}</strong>`);
-    document.getElementById("btn-play-next-map").classList.add("hidden");
     document.getElementById("btn-finish-series").classList.remove("hidden");
   } else {
     LiveMatch.gameNum++;
-    document.getElementById("live-game-label").textContent = `SIGUIENTE: JUEGO ${LiveMatch.gameNum}`;
+    document.getElementById("live-game-label").textContent = `JUEGO ${LiveMatch.gameNum}`;
+    document.getElementById("btn-play-next-map").classList.remove("hidden");
+    document.getElementById("btn-play-next-map").textContent = `Arrancar Reloj del Juego ${LiveMatch.gameNum} (5:00)`;
   }
 }
 
@@ -620,11 +782,13 @@ function simulateSeriesInstant() {
   while (h < winsNeeded && a < winsNeeded) {
     if (Math.random() < chance) {
       h++;
-      if (homeStarters[0]) homeStarters[Math.floor(Math.random() * homeStarters.length)].goals += 2;
-      if (homeStarters[1]) homeStarters[Math.floor(Math.random() * homeStarters.length)].assists += 1;
+      if (homeStarters.length) {
+        homeStarters[Math.floor(Math.random() * homeStarters.length)].goals += 2;
+        homeStarters[Math.floor(Math.random() * homeStarters.length)].assists += 1;
+      }
     } else {
       a++;
-      if (awayStarters[0]) awayStarters[Math.floor(Math.random() * awayStarters.length)].goals += 2;
+      if (awayStarters.length) awayStarters[Math.floor(Math.random() * awayStarters.length)].goals += 2;
     }
   }
   finalizeSeriesResult(h, a);
@@ -651,9 +815,18 @@ function finalizeSeriesResult(homeWins, awayWins) {
   const stage = InitialData.seasonSchedule[GameState.scheduleIndex];
   const won = homeWins > awayWins;
 
+  // Historial de rivalidad
+  if (!GameState.headToHead[opp.id]) GameState.headToHead[opp.id] = { w: 0, l: 0 };
+  if (won) {
+    GameState.headToHead[opp.id].w++;
+    GameState.careerStats.wins++;
+  } else {
+    GameState.headToHead[opp.id].l++;
+    GameState.careerStats.losses++;
+  }
+
   updateBracketProgress(won, opp, homeWins, awayWins);
 
-  // Actualizar racha (streak) de los titulares
   getTeamRoster(userTeam.id, true).forEach(p => {
     p.streak = won ? (p.streak || 0) + 1 : 0;
   });
@@ -665,10 +838,13 @@ function finalizeSeriesResult(homeWins, awayWins) {
     addNews(`✅ Victoria ${homeWins}-${awayWins} vs ${opp.name} en ${stage.compName} (${stage.roundName}). +$${stage.prize.toLocaleString()}.`);
 
     if (stage.isFinal) {
-      // Bonos de sponsor por título
       if (GameState.activeSponsor?.id === "sp_hyperx") {
         userTeam.budget += 30000;
         addNews(`💼 Bono HyperX: +$30,000 por ganar el título.`);
+      }
+      if (GameState.activeSponsor?.id === "sp_redbull" && (stage.compId.includes("major") || stage.compId === "rlcs_worlds")) {
+        userTeam.budget += 55000;
+        addNews(`💼 Bono Red Bull: +$55,000 por conquistar un torneo LAN internacional.`);
       }
       triggerChampionCeremony(stage, userTeam);
     }
@@ -687,7 +863,7 @@ function finalizeSeriesResult(homeWins, awayWins) {
     }
   }
 
-  // Simular estadísticas y puntos de los demás equipos del mundo
+  // Simular stats y puntos de los demás equipos del mundo
   GameState.teams.forEach(t => {
     if (t.id !== userTeam.id && t.id !== opp.id) {
       if (Math.random() > 0.45) t.points += Math.round(stage.points * 0.75);
@@ -700,8 +876,8 @@ function finalizeSeriesResult(homeWins, awayWins) {
     }
   });
 
-  // Posibilidad de recibir una oferta de otro club por uno de tus jugadores
-  if (!GameState.incomingOffer && Math.random() < 0.22) {
+  // Posibilidad de oferta por tus jugadores
+  if (!GameState.incomingOffer && Math.random() < 0.20) {
     const myPlayers = getTeamRoster(userTeam.id, false);
     const buyers = GameState.teams.filter(t => t.id !== userTeam.id && t.budget > 250000);
     if (myPlayers.length > 3 && buyers.length > 0) {
@@ -717,6 +893,23 @@ function finalizeSeriesResult(homeWins, awayWins) {
     }
   }
 
+  // Posibilidad de evento aleatorio de vestuario
+  if (!GameState.lockerEvent && Math.random() < 0.18) {
+    const myPlayers = getTeamRoster(userTeam.id, true);
+    if (myPlayers.length > 0) {
+      const star = myPlayers[0];
+      GameState.lockerEvent = {
+        playerId: star.id,
+        cost: 20000,
+        text: `${star.name} pide un bono de rendimiento ($20,000) tras sus últimas actuaciones.`,
+        yesLabel: "Pagar Bono (+Moral / On Fire)",
+        noLabel: "Rechazar",
+        winMsg: `Pagaste el bono a ${star.name} y entró en racha On Fire.`,
+        loseMsg: `Rechazaste el pedido de aumento de ${star.name}.`
+      };
+    }
+  }
+
   progressAcademyStep();
   updateNationalLeaguesStep();
 
@@ -724,7 +917,8 @@ function finalizeSeriesResult(homeWins, awayWins) {
   GameState.scheduleIndex++;
 
   if (GameState.scheduleIndex >= InitialData.seasonSchedule.length) {
-    advanceNewSeason();
+    // Dispara la Gala de Premios antes de iniciar la nueva temporada
+    openSeasonGalaModal();
   } else {
     const nextStage = InitialData.seasonSchedule[GameState.scheduleIndex];
     if (nextStage.compName !== prevComp) {
@@ -755,6 +949,7 @@ function triggerChampionCeremony(stage, team) {
 
   const starBox = document.getElementById("champ-star-choice");
   const closeBtn = document.getElementById("btn-close-champ-modal");
+
   if (stage.compId === "rlcs_worlds") {
     starBox.classList.remove("hidden");
     closeBtn.classList.add("hidden");
@@ -782,7 +977,113 @@ function closeChampionModal() {
   document.getElementById("champion-modal").classList.add("hidden");
 }
 
-// 2. COMPETENCIAS, LLAVES, LIGAS Y ESTADÍSTICAS
+// GALA DE PREMIOS OFICIAL AL CIERRE DE TEMPORADA
+function openSeasonGalaModal() {
+  const finishedSeason = GameState.season;
+  const allPros = [...GameState.players];
+
+  const ballonTop = [...allPros].sort((a, b) => (b.ovr * 2 + b.goals * 1.5 + b.assists) - (a.ovr * 2 + a.goals * 1.5 + a.assists));
+  const bootTop = [...allPros].sort((a, b) => b.goals - a.goals);
+  const kdbTop = [...allPros].sort((a, b) => b.assists - a.assists);
+  const gloveTop = [...allPros].sort((a, b) => b.saves - a.saves);
+  const rookieTop = allPros.filter(p => p.age <= 18).sort((a, b) => (b.ovr + b.goals) - (a.ovr + a.goals));
+
+  const youthPool = [...GameState.academyProspects];
+  const youthBallon = [...youthPool].sort((a, b) => (b.ovr + b.loanGoals) - (a.ovr + a.loanGoals))[0];
+  const youthBoot = [...youthPool].sort((a, b) => b.loanGoals - a.loanGoals)[0];
+
+  const awardEntry = {
+    season: finishedSeason,
+    ballonDor: ballonTop[0] ? `${ballonTop[0].name} (${getTeamById(ballonTop[0].teamId)?.tag || "FA"})` : "-",
+    ballonPodium: ballonTop.slice(0, 3).map(p => p.name).join(" / "),
+    goldenBoot: bootTop[0] ? `${bootTop[0].name} (${bootTop[0].goals} goles)` : "-",
+    kdbAward: kdbTop[0] ? `${kdbTop[0].name} (${kdbTop[0].assists} asist.)` : "-",
+    goldenGlove: gloveTop[0] ? `${gloveTop[0].name} (${gloveTop[0].saves} ataj.)` : "-",
+    rookie: rookieTop[0] ? `${rookieTop[0].name} (${rookieTop[0].age} años)` : "-",
+    youthBallon: youthBallon ? `${youthBallon.name} (${getTeamById(youthBallon.ownerTeamId)?.tag || "Cantera"})` : "Sin canteranos",
+    youthBoot: youthBoot ? `${youthBoot.name} (${youthBoot.loanGoals} goles)` : "-"
+  };
+
+  GameState.awardsHistory.unshift(awardEntry);
+  addNews(`🏆 GALA DE PREMIOS ${finishedSeason}: Rocket d'Or para ${awardEntry.ballonDor} | Premio KDB para ${awardEntry.kdbAward} | Balón de Oro Juvenil para ${awardEntry.youthBallon}.`, "prodigy");
+
+  document.getElementById("gala-season-title").textContent = `Premios Oficiales — Temporada ${finishedSeason}`;
+  document.getElementById("gala-awards-content").innerHTML = `
+    <div class="gala-row">🥇 <strong>Rocket d'Or (Balón de Oro):</strong> ${awardEntry.ballonDor}<br><small class="muted">Podio Top 3: ${awardEntry.ballonPodium}</small></div>
+    <div class="gala-row">⚽ <strong>Bota de Oro (Goleador):</strong> ${awardEntry.goldenBoot}</div>
+    <div class="gala-row">🎯 <strong>Premio KDB (Máximo Asistidor):</strong> ${awardEntry.kdbAward}</div>
+    <div class="gala-row">🧤 <strong>Guante de Oro (Atajadas):</strong> ${awardEntry.goldenGlove}</div>
+    <div class="gala-row">🌟 <strong>Rookie del Año (Sub-18):</strong> ${awardEntry.rookie}</div>
+    <div class="gala-row" style="border-left-color:#10b981;">🌱 <strong>Balón de Oro de Canteras:</strong> ${awardEntry.youthBallon}</div>
+    <div class="gala-row" style="border-left-color:#10b981;">👟 <strong>Bota de Oro Juvenil:</strong> ${awardEntry.youthBoot}</div>
+  `;
+
+  document.getElementById("gala-modal").classList.remove("hidden");
+}
+
+function closeGalaModal() {
+  document.getElementById("gala-modal").classList.add("hidden");
+  advanceNewSeason();
+  openPreseasonCombineModal();
+}
+
+// SCOUTING COMBINE DE PRETEMPORADA
+function openPreseasonCombineModal() {
+  const countries = ["AR", "CL", "BR", "FR", "US", "SA", "ES", "GB"];
+  const roles = ["Striker", "Playmaker", "Third Man"];
+  CombinePool = [];
+
+  for (let i = 0; i < 4; i++) {
+    let name, country;
+    if (GameState.customNameQueue.length > 0) {
+      const q = GameState.customNameQueue.shift();
+      name = q.name;
+      country = q.country === "RANDOM" ? countries[Math.floor(Math.random() * countries.length)] : q.country;
+    } else {
+      name = generateUniqueName();
+      country = countries[Math.floor(Math.random() * countries.length)];
+    }
+    const ovr = 79 + Math.floor(Math.random() * 5);
+    const pot = 89 + Math.floor(Math.random() * 8);
+    CombinePool.push({
+      id: "comb_" + Date.now() + "_" + i,
+      name, country, age: 15, ovr, pot,
+      mec: ovr + 2, rot: ovr - 1, def: ovr - 1,
+      role: roles[i % 3], contractYears: 3,
+      teamId: GameState.userTeamId, starter: false,
+      value: ovr * 4200, goals: 0, assists: 0, saves: 0, streak: 0
+    });
+  }
+
+  document.getElementById("combine-prospects-list").innerHTML = CombinePool.map((p, idx) => `
+    <div class="academy-item">
+      <div>
+        <strong>${Graphics.getFlag(p.country)} ${p.name}</strong> <span class="badge">15 años • OVR ${p.ovr} (Pot. ${p.pot})</span>
+        <div class="muted">Rol: ${p.role}</div>
+      </div>
+      <button class="btn-success btn-sm" onclick="draftCombinePlayer(${idx})">Elegir</button>
+    </div>
+  `).join("");
+
+  document.getElementById("combine-modal").classList.remove("hidden");
+}
+
+function draftCombinePlayer(idx) {
+  const chosen = CombinePool[idx];
+  if (chosen) {
+    GameState.players.push(chosen);
+    addNews(`🎯 Drafteaste a ${chosen.name} (15 años, OVR ${chosen.ovr}) en el Scouting Combine de Pretemporada.`, "prodigy");
+  }
+  closeCombineModal();
+  refreshAllUI();
+}
+
+function closeCombineModal() {
+  document.getElementById("combine-modal").classList.add("hidden");
+  refreshAllUI();
+}
+
+// 2. COMPETENCIAS, LLAVES Y LIGAS
 function selectCompView(compId, btn) {
   GameState.selectedCompView = compId;
   document.querySelectorAll(".comp-pill").forEach(p => p.classList.remove("active"));
@@ -959,7 +1260,7 @@ function renderCompetitionView() {
   `;
 }
 
-// 3. PLANTILLA, ROLES, CONTRATOS Y COACH
+// 3. PLANTILLA, IDENTIDAD (AUTO / ARENA) Y COACH
 function renderSquadAndCoach() {
   const userTeam = getUserTeam();
   const roster = getTeamRoster(userTeam.id, false);
@@ -981,6 +1282,7 @@ function renderSquadAndCoach() {
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
         <button class="btn-secondary btn-sm" onclick="toggleStarter('${p.id}')">${p.starter ? "Titular" : "Subir Titular"}</button>
         <button class="btn-outline btn-sm" onclick="renewPlayerContract('${p.id}')">Renovar ($${Math.round(p.value * 0.12).toLocaleString()})</button>
+        ${!p.starter ? `<button class="btn-warning btn-sm" onclick="loanProPlayer('${p.id}')">Ceder 1 Temp.</button>` : ""}
         <button class="btn-danger-outline btn-sm" onclick="sellPlayer('${p.id}')">Vender</button>
       </div>
     </div>
@@ -997,16 +1299,48 @@ function renderSquadAndCoach() {
       <p class="muted">Salario: $${coach.salary.toLocaleString()}</p>
     </div>
   ` : `<p class="muted">Sin Head Coach activo.</p>`;
+
+  document.getElementById("club-identity-box").innerHTML = `
+    <h4>Identidad de la Organización</h4>
+    <div class="field" style="margin-top:8px;">
+      <label>Auto Signature del Roster</label>
+      <select onchange="updateClubIdentity('car', this.value)">
+        ${["Fennec", "Octane", "Dominus"].map(c => `<option value="${c}" ${userTeam.car === c ? "selected" : ""}>${c}</option>`).join("")}
+      </select>
+    </div>
+    <div class="field">
+      <label>Arena Local</label>
+      <select onchange="updateClubIdentity('arena', this.value)">
+        ${["Champions Field", "Mannfield (Night)", "DFH Stadium", "Estadio Único LP", "Neo Tokyo"].map(a => `<option value="${a}" ${userTeam.arena === a ? "selected" : ""}>${a}</option>`).join("")}
+      </select>
+    </div>
+  `;
+}
+
+function updateClubIdentity(field, val) {
+  const userTeam = getUserTeam();
+  userTeam[field] = val;
+  refreshAllUI();
+}
+
+function loanProPlayer(playerId) {
+  const userTeam = getUserTeam();
+  const p = GameState.players.find(pl => pl.id === playerId);
+  const targets = GameState.teams.filter(t => t.id !== userTeam.id);
+  const dest = targets[Math.floor(Math.random() * targets.length)];
+  if (!p || !dest) return;
+  p.teamId = dest.id;
+  p.starter = true;
+  p.ovr = Math.min(p.pot, p.ovr + 2);
+  addNews(`🔄 Cediste a préstamo a ${p.name} a ${dest.name} para que sume rodaje (+2 OVR).`);
+  refreshAllUI();
 }
 
 function renewPlayerContract(playerId) {
   const userTeam = getUserTeam();
   const p = GameState.players.find(pl => pl.id === playerId);
   const fee = Math.round(p.value * 0.12);
-  if (userTeam.budget < fee) {
-    alert("No tenés presupuesto suficiente para la prima de renovación.");
-    return;
-  }
+  if (userTeam.budget < fee) return alert("Presupuesto insuficiente.");
   userTeam.budget -= fee;
   p.contractYears = (p.contractYears || 1) + 2;
   addNews(`✍️ Renovaste el contrato de ${p.name} por 2 temporadas más.`);
@@ -1031,10 +1365,7 @@ function toggleStarter(playerId) {
 function sellPlayer(playerId) {
   const userTeam = getUserTeam();
   const roster = getTeamRoster(userTeam.id, false);
-  if (roster.length <= 3) {
-    alert("Necesitás mínimo 3 jugadores para competir.");
-    return;
-  }
+  if (roster.length <= 3) return alert("Necesitás mínimo 3 jugadores para competir.");
   const p = GameState.players.find(pl => pl.id === playerId);
   const gain = Math.round(p.value * 0.75);
   userTeam.budget += gain;
@@ -1044,46 +1375,51 @@ function sellPlayer(playerId) {
   refreshAllUI();
 }
 
-// 4. CANTERA PROPIA VS. CANTERA ALEATORIA GLOBAL
+// 4. CANTERA PROPIA VS. CANTERA ALEATORIA GLOBAL (VARIEDAD C3 A SSL + PROGRESIÓN REALISTA)
 function addCustomProspectNames() {
   const raw = document.getElementById("prospect-names-input").value;
   const destination = document.getElementById("custom-prospect-destination").value;
   const country = document.getElementById("custom-prospect-country").value;
   const rankPref = document.getElementById("custom-prospect-rank").value;
+  const archPref = document.getElementById("custom-prospect-archetype").value;
 
   const names = raw.split(/[\n,]+/).map(n => n.trim()).filter(n => n.length > 0);
   if (names.length === 0) return;
 
-  names.forEach(name => GameState.customNameQueue.push({ name, destination, country, rankPref }));
+  names.forEach(name => GameState.customNameQueue.push({ name, destination, country, rankPref, archPref }));
   document.getElementById("prospect-names-input").value = "";
   addNews(`Inscribiste ${names.length} prodigios en el radar juvenil (${destination === "MY_ACADEMY" ? "Mi Cantera" : "Canteras Aleatorias del Mundo"}).`, "prodigy");
 
-  // Hacer aparecer hasta 2 de inmediato para verlos en acción
-  triggerProspectDiscovery();
-  if (GameState.customNameQueue.length > 0) triggerProspectDiscovery();
+  while (GameState.customNameQueue.length > 0) {
+    triggerProspectDiscovery();
+  }
   refreshAllUI();
 }
 
 function triggerProspectDiscovery() {
   const countries = ["AR", "CL", "BR", "FR", "US", "SA", "ES", "GB"];
-  let name, country, rank, destination;
+  let name, country, tpl, archetype, destination;
 
   if (GameState.customNameQueue.length > 0) {
     const custom = GameState.customNameQueue.shift();
     name = custom.name;
     destination = custom.destination;
     country = custom.country === "RANDOM" ? countries[Math.floor(Math.random() * countries.length)] : custom.country;
-    rank = custom.rankPref === "AUTO" ? ["GC2", "GC3", "SSL"][Math.floor(Math.random() * 3)] : custom.rankPref;
+    tpl = custom.rankPref === "AUTO"
+      ? InitialData.youthTemplates[Math.floor(Math.random() * InitialData.youthTemplates.length)]
+      : InitialData.youthTemplates.find(t => t.code === custom.rankPref) || InitialData.youthTemplates[0];
+    archetype = custom.archPref === "AUTO"
+      ? InitialData.youthArchetypes[Math.floor(Math.random() * InitialData.youthArchetypes.length)]
+      : custom.archPref;
   } else {
     name = generateUniqueName();
     destination = Math.random() > 0.5 ? "MY_ACADEMY" : "RANDOM_ACADEMY";
     country = countries[Math.floor(Math.random() * countries.length)];
-    rank = ["GC2", "GC3", "SSL"][Math.floor(Math.random() * 3)];
+    tpl = InitialData.youthTemplates[Math.floor(Math.random() * InitialData.youthTemplates.length)];
+    archetype = InitialData.youthArchetypes[Math.floor(Math.random() * InitialData.youthArchetypes.length)];
   }
 
-  const age = rank === "GC2" ? 12 : (rank === "GC3" ? 13 : 14);
-  const ovr = rank === "SSL" ? 81 : (rank === "GC3" ? 77 : 73);
-  const pot = Math.floor(Math.random() * 8) + 91;
+  const pot = Math.floor(Math.random() * (tpl.potMax - tpl.potMin + 1)) + tpl.potMin;
 
   let ownerTeamId = GameState.userTeamId;
   let isUserAcademy = true;
@@ -1093,14 +1429,15 @@ function triggerProspectDiscovery() {
     const randomClub = otherTeams[Math.floor(Math.random() * otherTeams.length)];
     ownerTeamId = randomClub.id;
     isUserAcademy = false;
-    addNews(`🌍 ¡Cantera Global! El prodigio ${name} (${age} años, ${rank}) ingresó a la academia de ${randomClub.name}.`, "prodigy");
+    addNews(`🌍 ¡Cantera Global! ${name} (${tpl.age} años, ${tpl.rank}, ${archetype}) ingresó a la academia de ${randomClub.name}.`, "prodigy");
   } else {
-    addNews(`🌟 ¡Mi Cantera! Reclutaste al prodigio ${name} (${age} años, ${rank}, Pot. ${pot}).`, "prodigy");
+    addNews(`🌟 ¡Mi Cantera! Reclutaste a ${name} (${tpl.age} años, ${tpl.rank}, ${archetype}, Pot. ${pot}).`, "prodigy");
   }
 
   GameState.academyProspects.push({
     id: "acad_" + Date.now() + "_" + Math.random(),
-    name, country, age, rank, ovr, pot,
+    name, country, age: tpl.age, rank: tpl.rank, archetype,
+    ovr: tpl.ovr, pot,
     ownerTeamId,
     isUserAcademy,
     loanLeagueId: null,
@@ -1127,20 +1464,41 @@ function sendProspectOnLoan(prospectId, leagueId) {
   refreshAllUI();
 }
 
+function poachRivalProspect(prospectId) {
+  const userTeam = getUserTeam();
+  const p = GameState.academyProspects.find(x => x.id === prospectId);
+  if (!p || p.isUserAcademy) return;
+  const fee = p.ovr * 950;
+  if (userTeam.budget < fee) return alert(`Necesitás $${fee.toLocaleString()} de cláusula de formación.`);
+  userTeam.budget -= fee;
+  p.ownerTeamId = userTeam.id;
+  p.isUserAcademy = true;
+  addNews(`🤝 ¡Fichaje Juvenil! Pagaste $${fee.toLocaleString()} de compensación y trajiste a ${p.name} a tu cantera.`, "prodigy");
+  refreshAllUI();
+}
+
 function promoteProspectToFirstTeam(prospectId) {
   const idx = GameState.academyProspects.findIndex(x => x.id === prospectId);
   if (idx === -1) return;
   const p = GameState.academyProspects[idx];
+  if (!p.isUserAcademy) return;
   if (p.age < 15) {
     alert(`${p.name} tiene ${p.age} años. La edad mínima RLCS es 15 años.`);
     return;
   }
-  const roles = ["Striker", "Playmaker", "Third Man"];
+  const roleMap = {
+    "Freestyler": "Striker",
+    "Ranked Demon 1v1": "Striker",
+    "Cerebro Táctico": "Third Man",
+    "Diamante en Bruto": "Playmaker"
+  };
   GameState.players.push({
     id: "pro_" + Date.now(),
     name: p.name, country: p.country, age: p.age, ovr: p.ovr, pot: p.pot,
-    mec: p.ovr + 2, rot: p.ovr - 1, def: p.ovr - 1,
-    role: roles[Math.floor(Math.random() * 3)],
+    mec: p.archetype === "Freestyler" ? p.ovr + 4 : p.ovr + 1,
+    rot: p.archetype === "Cerebro Táctico" ? p.ovr + 3 : p.ovr - 1,
+    def: p.archetype === "Cerebro Táctico" ? p.ovr + 2 : p.ovr - 1,
+    role: roleMap[p.archetype] || "Striker",
     contractYears: 3,
     teamId: GameState.userTeamId,
     starter: false,
@@ -1148,24 +1506,28 @@ function promoteProspectToFirstTeam(prospectId) {
     goals: 0, assists: 0, saves: 0, streak: 0
   });
   GameState.academyProspects.splice(idx, 1);
-  addNews(`¡${p.name} (15 años, OVR ${p.ovr}) debuta en el primer equipo!`, "prodigy");
+  addNews(`¡${p.name} (15 años, OVR ${p.ovr}, ${p.archetype}) debuta en tu primer equipo!`, "prodigy");
   refreshAllUI();
 }
 
+// Progresión realista y balanceada de canteras (no suben todos a SSL en 3 partidos)
 function progressAcademyStep() {
   const coach = getTeamCoach(getUserTeam().id);
-  const formadorBonus = (coach && coach.specialty.includes("Formador")) ? 1 : 0;
+  const formadorBonus = (coach && coach.specialty.includes("Formador")) ? 0.08 : 0;
 
   GameState.academyProspects.forEach(p => {
-    // Los canteranos de otros clubes o cedidos suman estadísticas juveniles
-    if (p.loanLeagueId || !p.isUserAcademy) {
-      p.loanGoals += Math.floor(Math.random() * 5) + 2;
-      p.loanAssists += Math.floor(Math.random() * 4) + 1;
-      if (Math.random() < 0.45) {
-        p.ovr = Math.min(p.pot, p.ovr + 1 + (p.isUserAcademy ? formadorBonus : 0));
-        if (p.ovr >= 76 && p.rank === "GC2") p.rank = "GC3";
-        if (p.ovr >= 80 && p.rank === "GC3") p.rank = "SSL";
-      }
+    const activeInLeague = p.loanLeagueId || !p.isUserAcademy;
+    if (activeInLeague) {
+      p.loanGoals += Math.floor(Math.random() * 3) + 1;
+      p.loanAssists += Math.floor(Math.random() * 2) + 1;
+    }
+    const chance = (activeInLeague ? 0.22 : 0.12) + (p.isUserAcademy ? formadorBonus : 0);
+    if (Math.random() < chance && p.ovr < p.pot) {
+      p.ovr++;
+      if (p.ovr >= 68 && p.rank === "C3") p.rank = "GC1";
+      else if (p.ovr >= 72 && p.rank === "GC1") p.rank = "GC2";
+      else if (p.ovr >= 76 && p.rank === "GC2") p.rank = "GC3";
+      else if (p.ovr >= 80 && p.rank === "GC3") p.rank = "SSL";
     }
   });
 }
@@ -1202,13 +1564,13 @@ function renderAcademy() {
   const filtered = GameState.academyProspects.filter(p => filter === "MINE" ? p.isUserAcademy : !p.isUserAcademy);
 
   document.getElementById("academy-players-list").innerHTML = filtered.length ? filtered.map(p => {
-    const ownerClub = getTeamById(p.ownerTeamId)?.name || "Academia";
+    const ownerClub = getTeamById(p.ownerTeamId)?.name || "Academia Rival";
     return `
       <div class="academy-item">
         <div>
           <strong>${Graphics.getFlag(p.country)} ${p.name}</strong> ${Graphics.renderRankBadge(p.rank)}
-          <div class="muted">${p.age} años • OVR ${p.ovr} (Pot. ${p.pot}) • ${p.isUserAcademy ? "Tu Cantera" : ownerClub}</div>
-          <span class="badge">${p.loanClub ? `Cedido en ${p.loanClub}` : "Liga Juvenil"} (${p.loanGoals}G / ${p.loanAssists}A)</span>
+          <div class="muted">${p.age} años • OVR ${p.ovr} (Pot. ${p.pot}) • <em>${p.archetype || "Prodigio"}</em></div>
+          <span class="badge">${p.isUserAcademy ? (p.loanClub ? `Cedido en ${p.loanClub}` : "Mi Cantera") : `Cantera de ${ownerClub}`} (${p.loanGoals}G / ${p.loanAssists}A)</span>
         </div>
         ${p.isUserAcademy ? `
           <div style="display:flex;flex-direction:column;gap:6px;">
@@ -1220,7 +1582,9 @@ function renderAcademy() {
             ` : ""}
             <button class="btn-primary btn-sm" onclick="promoteProspectToFirstTeam('${p.id}')">Subir al Primer Equipo</button>
           </div>
-        ` : ""}
+        ` : `
+          <button class="btn-outline btn-sm" onclick="poachRivalProspect('${p.id}')">Fichar Juvenil ($${(p.ovr * 950).toLocaleString()})</button>
+        `}
       </div>
     `;
   }).join("") : `<p class="muted">No hay juveniles registrados en esta vista todavía.</p>`;
@@ -1232,7 +1596,6 @@ function renderMarket() {
   const list = document.getElementById("market-list");
   const userTeam = getUserTeam();
 
-  // Render Sponsors
   const spBox = document.getElementById("sponsor-box");
   if (GameState.activeSponsor) {
     spBox.innerHTML = `<div class="offer-alert"><strong>💼 Patrocinador Activo: ${GameState.activeSponsor.name}</strong><div class="muted">${GameState.activeSponsor.bonusDesc}</div></div>`;
@@ -1357,36 +1720,17 @@ function hireCoach(coachId) {
   refreshAllUI();
 }
 
-// 6. PREMIOS INDIVIDUALES (BALÓN DE ORO, KDB, BOTA DE ORO, CANTERAS) Y VITRINA
-function calculateSeasonIndividualAwards(finishedSeason) {
-  const allPros = [...GameState.players];
-  const ballonDor = [...allPros].sort((a, b) => (b.ovr * 2 + b.goals + b.assists) - (a.ovr * 2 + a.goals + a.assists))[0];
-  const goldenBoot = [...allPros].sort((a, b) => b.goals - a.goals)[0];
-  const kdbAward = [...allPros].sort((a, b) => b.assists - a.assists)[0];
-  const goldenGlove = [...allPros].sort((a, b) => b.saves - a.saves)[0];
-  const rookie = allPros.filter(p => p.age <= 18).sort((a, b) => b.ovr - a.ovr)[0] || ballonDor;
-
-  // Premios de Canteras
-  const youthPool = [...GameState.academyProspects];
-  const youthBallon = youthPool.sort((a, b) => (b.ovr + b.loanGoals) - (a.ovr + a.loanGoals))[0];
-  const youthBoot = [...GameState.academyProspects].sort((a, b) => b.loanGoals - a.loanGoals)[0];
-
-  const awardEntry = {
-    season: finishedSeason,
-    ballonDor: ballonDor ? `${ballonDor.name} (${getTeamById(ballonDor.teamId)?.tag || "FA"})` : "-",
-    goldenBoot: goldenBoot ? `${goldenBoot.name} (${goldenBoot.goals} goles)` : "-",
-    kdbAward: kdbAward ? `${kdbAward.name} (${kdbAward.assists} asist.)` : "-",
-    goldenGlove: goldenGlove ? `${goldenGlove.name} (${goldenGlove.saves} ataj.)` : "-",
-    rookie: rookie ? `${rookie.name} (${rookie.age} años)` : "-",
-    youthBallon: youthBallon ? `${youthBallon.name} (${getTeamById(youthBallon.ownerTeamId)?.tag || "Cantera"})` : "Sin canteranos",
-    youthBoot: youthBoot ? `${youthBoot.name} (${youthBoot.loanGoals} goles)` : "-"
-  };
-
-  GameState.awardsHistory.unshift(awardEntry);
-  addNews(`🏆 GALA DE PREMIOS ${finishedSeason}: Rocket d'Or para ${awardEntry.ballonDor} | Premio KDB para ${awardEntry.kdbAward} | Balón de Oro Juvenil para ${awardEntry.youthBallon}.`, "prodigy");
-}
-
+// 6. VITRINA SIMPLIFICADA Y GALAS HISTÓRICAS
 function renderAwardsAndTrophies() {
+  const totalTitles = GameState.trophiesWon.length;
+  const worldsWon = GameState.trophiesWon.filter(t => t.compId === "rlcs_worlds").length;
+  let mgrRank = "Novato Regional";
+  if (worldsWon >= 2) mgrRank = "Dinastía Mundial RLCS";
+  else if (worldsWon === 1) mgrRank = "Campeón del Mundo";
+  else if (totalTitles >= 4) mgrRank = "Estratega Consagrado";
+  else if (totalTitles >= 1) mgrRank = "Campeón Regional";
+  document.getElementById("manager-rank-badge").textContent = `Rango: ${mgrRank} (${totalTitles} Títulos)`;
+
   const awardsEl = document.getElementById("individual-awards-history");
   awardsEl.innerHTML = GameState.awardsHistory.length
     ? GameState.awardsHistory.map(a => `
@@ -1404,28 +1748,39 @@ function renderAwardsAndTrophies() {
           </div>
         </div>
       `).join("")
-    : `<p class="muted">Los premios individuales (Rocket d'Or, Bota de Oro, Premio KDB y premios de Cantera) se entregan al finalizar cada temporada.</p>`;
+    : `<p class="muted">Los premios individuales (Rocket d'Or, Bota de Oro, Premio KDB y premios de Cantera) se entregan en la Gala al finalizar cada temporada.</p>`;
 
+  // Vitrina Simplificada: Agrupa trofeos repetidos con contador xN
   const cabinet = document.getElementById("club-trophy-cabinet");
-  cabinet.innerHTML = GameState.trophiesWon.length
-    ? GameState.trophiesWon.map(t => `
-        <div class="trophy-item">
-          ${Graphics.renderTrophy(t.compId, 52)}
-          <h4 style="margin-top:6px;font-size:0.86rem;">${t.compName}</h4>
-          <span class="badge">Temp. ${t.season}</span>
-        </div>
-      `).join("")
-    : `<p class="muted">Aún no hay copas en la vitrina.</p>`;
+  if (GameState.trophiesWon.length === 0) {
+    cabinet.innerHTML = `<p class="muted">Aún no hay copas en la vitrina.</p>`;
+  } else {
+    const grouped = {};
+    GameState.trophiesWon.forEach(t => {
+      if (!grouped[t.compName]) grouped[t.compName] = { compId: t.compId, compName: t.compName, years: [] };
+      grouped[t.compName].years.push(t.season);
+    });
+    cabinet.innerHTML = Object.values(grouped).map(g => `
+      <div class="trophy-item">
+        <span class="trophy-count-badge">x${g.years.length}</span>
+        ${Graphics.renderTrophy(g.compId, 48)}
+        <h4 style="margin-top:6px;font-size:0.84rem;">${g.compName}</h4>
+        <div class="muted" style="font-size:0.74rem;margin:4px 0 0;">${g.years.join(", ")}</div>
+      </div>
+    `).join("");
+  }
 
   const hofEl = document.getElementById("hall-of-fame-list");
   hofEl.innerHTML = GameState.hallOfFame.length
-    ? GameState.hallOfFame.map(h => `<div class="news-item prodigy">🏛️ <strong>${h.name}</strong> — Retirado a los ${h.age} años tras hacer historia en el club (${h.goals}G / ${h.assists}A).</div>`).join("")
+    ? GameState.hallOfFame.map(h => `<div class="news-item prodigy">🏛️ <strong>${h.name}</strong> — Retirado a los ${h.age} años (${h.goals}G / ${h.assists}A).</div>`).join("")
     : `<p class="muted">Los jugadores que se retiren en tu club quedarán inmortalizados aquí.</p>`;
 
+  const compFilter = document.getElementById("history-comp-filter")?.value || "ALL";
+  const filteredHist = GameState.championsHistory.filter(h => compFilter === "ALL" || h.compId === compFilter);
   const hist = document.getElementById("champions-history-list");
-  hist.innerHTML = GameState.championsHistory.length
-    ? GameState.championsHistory.map(h => `<div class="news-item"><strong>[${h.season}] ${h.compName}:</strong> ${h.winnerName}</div>`).join("")
-    : `<p class="muted">Sin campeones registrados aún.</p>`;
+  hist.innerHTML = filteredHist.length
+    ? filteredHist.map(h => `<div class="news-item"><strong>[${h.season}] ${h.compName}:</strong> ${h.winnerName}</div>`).join("")
+    : `<p class="muted">Sin campeones registrados en este filtro.</p>`;
 }
 
 function populateEditorTeams() {
@@ -1465,10 +1820,6 @@ function createCustomPerson() {
 
 // CAMBIO DE TEMPORADA
 function advanceNewSeason() {
-  const finishedSeason = GameState.season;
-  calculateSeasonIndividualAwards(finishedSeason);
-
-  // Bono de sponsor NVIDIA por química
   if (GameState.activeSponsor?.id === "sp_nvidia" && getTeamChemistry(GameState.userTeamId) >= 88) {
     getUserTeam().budget += 20000;
     addNews(`💼 Bono NVIDIA: +$20,000 por mantener química superior al 88%.`);
@@ -1482,7 +1833,6 @@ function advanceNewSeason() {
   GameState.teams.forEach(t => t.points = 0);
   buildNationalTables();
 
-  // Envejecer canteranos y promover automáticamente a los de otros clubes cuando cumplen 15
   GameState.academyProspects = GameState.academyProspects.filter(p => {
     p.age++;
     p.ovr = Math.min(p.pot, p.ovr + 2);
@@ -1506,7 +1856,6 @@ function advanceNewSeason() {
     return true;
   });
 
-  // Envejecer pros, descontar contratos, resetear stats de temporada y retirar veteranos
   GameState.players = GameState.players.filter(p => {
     p.age++;
     if (p.teamId) {
@@ -1542,7 +1891,6 @@ function advanceNewSeason() {
       return false;
     }
 
-    // Resetear estadísticas para la nueva temporada
     p.goals = 0;
     p.assists = 0;
     p.saves = 0;
@@ -1553,15 +1901,17 @@ function advanceNewSeason() {
   triggerProspectDiscovery();
   generateTournamentBracket();
   pickNextOpponent();
+  refreshAllUI();
+  saveGame(false);
 }
 
 function saveGame(notify) {
-  localStorage.setItem("rl_career_save_v3", JSON.stringify(GameState));
-  if (notify) alert("Partida v3.0 guardada correctamente.");
+  localStorage.setItem("rl_career_save_v4", JSON.stringify(GameState));
+  if (notify) alert("Partida v4.0 guardada correctamente.");
 }
 
 function loadSavedGame() {
-  const raw = localStorage.getItem("rl_career_save_v3");
+  const raw = localStorage.getItem("rl_career_save_v4");
   if (!raw) return;
   GameState = JSON.parse(raw);
   launchGameUI();
@@ -1569,7 +1919,7 @@ function loadSavedGame() {
 
 function resetCareer() {
   if (confirm("¿Seguro que querés reiniciar y volver al menú?")) {
-    localStorage.removeItem("rl_career_save_v3");
+    localStorage.removeItem("rl_career_save_v4");
     location.reload();
   }
 }
