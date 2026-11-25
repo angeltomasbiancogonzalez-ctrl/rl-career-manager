@@ -8,7 +8,7 @@ const Graphics = {
   countryNames: {
     AR: "Argentina", CL: "Chile", BR: "Brasil", FR: "Francia", US: "Estados Unidos",
     SA: "Arabia Saudita", ES: "España", GB: "Reino Unido", DE: "Alemania",
-    NL: "Países Bajos", BE: "Bélgica", CA: "Canadá", MA: "Marruecos"
+    NL: "Países Bajos", BE: "Bélgica", CA: "Canadá", MA: "Marruecos", JP: "Japón", AU: "Australia"
   },
 
   getFlag(code) {
@@ -163,5 +163,133 @@ const Graphics = {
   renderRankBadge(rank) {
     const labels = { C3: "Champ III", GC1: "GC I", GC2: "GC II", GC3: "GC III", SSL: "SSL" };
     return `<span class="rank-badge rank-${rank}">⬡ ${labels[rank] || rank}</span>`;
+  },
+
+  // RENDERIZADOR DE LA CANCHA 2D DE ROCKET LEAGUE EN VIVO
+  drawPitch2D(canvas, simState) {
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const W = canvas.width;
+    const H = canvas.height;
+
+    // Fondo césped Champions Field nocturno
+    const grad = ctx.createLinearGradient(0, 0, W, 0);
+    grad.addColorStop(0, "#0b1930");
+    grad.addColorStop(0.5, "#0f2438");
+    grad.addColorStop(1, "#2a1711");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Franjas sutiles de césped
+    ctx.fillStyle = "rgba(255,255,255,0.025)";
+    for (let x = 36; x < W - 36; x += 56) {
+      ctx.fillRect(x, 18, 28, H - 36);
+    }
+
+    // Perímetro exterior del estadio
+    ctx.strokeStyle = "#334155";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(36, 18, W - 72, H - 36);
+
+    // Línea central y círculo central
+    ctx.strokeStyle = "rgba(148,163,184,0.35)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(W / 2, 18);
+    ctx.lineTo(W / 2, H - 18);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(W / 2, H / 2, 48, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Áreas y Arcos (Azul izquierda, Naranja derecha)
+    ctx.strokeStyle = "#0ea5e9";
+    ctx.strokeRect(36, H / 2 - 75, 65, 150);
+    ctx.fillStyle = "rgba(14, 165, 233, 0.35)";
+    ctx.fillRect(14, H / 2 - 44, 22, 88);
+    ctx.strokeRect(14, H / 2 - 44, 22, 88);
+
+    ctx.strokeStyle = "#f97316";
+    ctx.strokeRect(W - 101, H / 2 - 75, 65, 150);
+    ctx.fillStyle = "rgba(249, 115, 22, 0.35)";
+    ctx.fillRect(W - 36, H / 2 - 44, 22, 88);
+    ctx.strokeRect(W - 36, H / 2 - 44, 22, 88);
+
+    // 6 Big Boost Pads (100% Boost)
+    const pads = simState?.boostPads || [
+      { x: 64, y: 42, active: true }, { x: W / 2, y: 38, active: true }, { x: W - 64, y: 42, active: true },
+      { x: 64, y: H - 42, active: true }, { x: W / 2, y: H - 38, active: true }, { x: W - 64, y: H - 42, active: true }
+    ];
+    pads.forEach(pad => {
+      ctx.beginPath();
+      ctx.arc(pad.x, pad.y, 7, 0, Math.PI * 2);
+      ctx.fillStyle = pad.active ? "#facc15" : "rgba(250,204,21,0.18)";
+      ctx.fill();
+      if (pad.active) {
+        ctx.strokeStyle = "#fef08a";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+    });
+
+    if (!simState) return;
+
+    // Dibujar Autos (3 Locales Azules + 3 Visitantes Naranjas)
+    (simState.cars || []).forEach(car => {
+      if (car.demoTimer > 0) {
+        ctx.fillStyle = "#ef4444";
+        ctx.font = "bold 11px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("💥 DEMO", car.x, car.y);
+        return;
+      }
+
+      // Estela de boost si está acelerando
+      if (car.boosting && car.boost > 5) {
+        ctx.beginPath();
+        ctx.arc(car.x - (car.isHome ? 12 : -12), car.y, 6, 0, Math.PI * 2);
+        ctx.fillStyle = car.isHome ? "rgba(56,189,248,0.55)" : "rgba(251,146,60,0.55)";
+        ctx.fill();
+      }
+
+      // Chasis del auto
+      ctx.fillStyle = car.isHome ? "#0284c7" : "#ea580c";
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.roundRect(car.x - 11, car.y - 7, 22, 14, 4);
+      ctx.fill();
+      ctx.stroke();
+
+      // Barra de boost mini arriba del auto
+      ctx.fillStyle = "#0f172a";
+      ctx.fillRect(car.x - 12, car.y - 14, 24, 3);
+      ctx.fillStyle = "#facc15";
+      ctx.fillRect(car.x - 12, car.y - 14, (car.boost / 100) * 24, 3);
+
+      // Nombre del jugador debajo
+      ctx.fillStyle = "#f8fafc";
+      ctx.font = "bold 10px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(car.name, car.x, car.y + 18);
+    });
+
+    // Dibujar la Pelota de Rocket League
+    const ball = simState.ball || { x: W / 2, y: H / 2, aerial: false };
+    const radius = ball.aerial ? 13 : 10;
+
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, radius + 4, 0, Math.PI * 2);
+    ctx.fillStyle = ball.aerial ? "rgba(250, 204, 21, 0.32)" : "rgba(255, 255, 255, 0.2)";
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = "#e2e8f0";
+    ctx.fill();
+    ctx.strokeStyle = ball.aerial ? "#facc15" : "#38bdf8";
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
   }
 };
