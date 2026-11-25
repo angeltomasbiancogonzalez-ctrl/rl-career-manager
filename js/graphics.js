@@ -18,12 +18,12 @@ const Graphics = {
   // Dibuja estrellas doradas arriba del escudo según los Mundiales RLCS ganados
   renderStarsSVG(starsCount) {
     if (!starsCount || starsCount <= 0) return "";
-    const count = Math.min(starsCount, 5);
+    const count = Math.min(starsCount, 6);
     let stars = "";
-    const startX = 50 - (count - 1) * 9;
+    const startX = 50 - (count - 1) * 8;
     for (let i = 0; i < count; i++) {
-      const cx = startX + i * 18;
-      stars += `<polygon points="${cx},2 ${cx+2.2},7 ${cx+7.5},7 ${cx+3.2},10.5 ${cx+4.8},15.5 ${cx},12.2 ${cx-4.8},15.5 ${cx-3.2},10.5 ${cx-7.5},7 ${cx-2.2},7" fill="#facc15" stroke="#854d0e" stroke-width="0.8"/>`;
+      const cx = startX + i * 16;
+      stars += `<polygon points="${cx},2 ${cx+2},6.8 ${cx+7},6.8 ${cx+3},10 ${cx+4.5},14.8 ${cx},11.8 ${cx-4.5},14.8 ${cx-3},10 ${cx-7},6.8 ${cx-2},6.8" fill="#facc15" stroke="#854d0e" stroke-width="0.8"/>`;
     }
     return stars;
   },
@@ -39,78 +39,65 @@ const Graphics = {
     const id = team.id || "";
     let inner = "";
 
-    // Escudos inspirados en los clubes reales de RLCS
     if (id === "kc") {
-      // Karmine Corp: Azul eléctrico, escudo afilado con marco blanco y monograma KC
       inner = `
         <path d="M16,22 L50,16 L84,22 L80,62 L50,94 L20,62 Z" fill="#0055ff" stroke="#ffffff" stroke-width="4.5"/>
         <path d="M24,28 L50,23 L76,28 L72,58 L50,84 L28,58 Z" fill="none" stroke="#38bdf8" stroke-width="2"/>
         <text x="50" y="61" font-family="Arial Black, sans-serif" font-weight="900" font-size="26" fill="#ffffff" text-anchor="middle">KC</text>
       `;
     } else if (id === "vit") {
-      // Team Vitality: Hexágono negro y amarillo abeja/avispa
       inner = `
         <polygon points="50,17 85,35 85,73 50,93 15,73 15,35" fill="#111827" stroke="#eab308" stroke-width="5"/>
         <polygon points="50,25 76,39 76,69 50,84 24,69 24,39" fill="#eab308"/>
         <path d="M32,42 L50,68 L68,42 L58,42 L50,55 L42,42 Z" fill="#111827"/>
       `;
     } else if (id === "m8") {
-      // Gentle Mates: Rombo negro con M rosa neón estilizada
       inner = `
         <polygon points="50,16 88,54 50,94 12,54" fill="#0f172a" stroke="#ec4899" stroke-width="5"/>
         <path d="M31,68 V42 L50,58 L69,42 V68" fill="none" stroke="#ec4899" stroke-width="6.5" stroke-linejoin="round"/>
       `;
     } else if (id === "bds") {
-      // Team BDS: Escudo carmesí y blanco con corona/puntas
       inner = `
         <path d="M18,22 L34,30 L50,18 L66,30 L82,22 L78,64 L50,94 L22,64 Z" fill="#e11d48" stroke="#ffffff" stroke-width="4"/>
         <text x="50" y="65" font-family="Arial Black, sans-serif" font-weight="900" font-size="22" fill="#ffffff" text-anchor="middle">BDS</text>
       `;
     } else if (id === "g2") {
-      // G2 Stride: Máscara samurái rojo y negro
       inner = `
         <path d="M18,22 H82 L76,68 L50,94 L24,68 Z" fill="#111827" stroke="#dc2626" stroke-width="5"/>
         <path d="M26,34 L46,46 L28,54 Z M74,34 L54,46 L72,54 Z" fill="#dc2626"/>
         <text x="50" y="76" font-family="Arial Black, sans-serif" font-weight="900" font-size="20" fill="#ffffff" text-anchor="middle">G2</text>
       `;
     } else if (id === "geng") {
-      // Gen.G: Escudo negro y dorado con garra tigre
       inner = `
         <polygon points="50,17 85,34 80,74 50,94 20,74 15,34" fill="#090d16" stroke="#f59e0b" stroke-width="5"/>
         <path d="M34,34 L42,74 M48,30 L52,78 M64,34 L58,74" stroke="#f59e0b" stroke-width="4.5" stroke-linecap="round"/>
       `;
     } else if (id === "fur") {
-      // FURIA: Escudo negro y blanco con zarpazos estilo pantera
       inner = `
         <path d="M16,20 H84 L80,62 L50,94 L20,62 Z" fill="#09090b" stroke="#ffffff" stroke-width="4.5"/>
         <path d="M30,34 L66,46 L34,56 L70,68" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round"/>
       `;
     } else if (id === "kru") {
-      // KRÜ Esports: Hexágono rosa fucsia y negro
       inner = `
         <polygon points="50,17 86,36 86,74 50,94 14,74 14,36" fill="#111827" stroke="#f43f5e" stroke-width="5"/>
         <text x="50" y="63" font-family="Arial Black, sans-serif" font-weight="900" font-size="23" fill="#f43f5e" text-anchor="middle">KRÜ</text>
       `;
     } else if (id === "9z") {
-      // 9z Team: Escudo violeta intenso con 9Z blanco
       inner = `
         <path d="M18,20 H82 V58 C82,78 50,94 50,94 C50,94 18,78 18,58 Z" fill="#6d28d9" stroke="#ffffff" stroke-width="4.5"/>
         <text x="50" y="64" font-family="Arial Black, sans-serif" font-weight="900" font-size="27" fill="#ffffff" text-anchor="middle">9Z</text>
       `;
     } else if (id === "lev") {
-      // Leviatán: Círculo celeste marino con tridente/ola
       inner = `
         <circle cx="50" cy="55" r="38" fill="#0369a1" stroke="#38bdf8" stroke-width="5"/>
         <path d="M34,42 V62 C34,70 66,70 66,62 V42 M50,34 V74" fill="none" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round"/>
       `;
     } else if (id === "flc") {
-      // Team Falcons: Escudo verde esmeralda con alas doradas/blancas
       inner = `
         <path d="M16,22 L50,16 L84,22 L78,66 L50,94 L22,66 Z" fill="#15803d" stroke="#ffffff" stroke-width="4.5"/>
         <path d="M26,40 L50,54 L74,40 L66,62 L50,74 L34,62 Z" fill="#ffffff"/>
       `;
     } else {
-      // Escudo personalizable para el resto y equipos creados por el usuario
       const c1 = team.color1 || "#00a8ff";
       const c2 = team.color2 || "#ffffff";
       const shape = team.shape || "shield";
@@ -175,7 +162,7 @@ const Graphics = {
   },
 
   renderRankBadge(rank) {
-    const labels = { GC2: "GC II", GC3: "GC III", SSL: "SSL" };
+    const labels = { C3: "Champ III", GC1: "GC I", GC2: "GC II", GC3: "GC III", SSL: "SSL" };
     return `<span class="rank-badge rank-${rank}">⬡ ${labels[rank] || rank}</span>`;
   }
 };
