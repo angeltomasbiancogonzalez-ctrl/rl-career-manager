@@ -1,37 +1,36 @@
 const InitialData = {
   teams: [
     // EUROPA
-    { id: "kc", name: "Karmine Corp", tag: "KC", region: "EU", rep: 94, stars: 0, color1: "#0055ff", color2: "#ffffff", shape: "modern", budget: 480000, points: 0 },
-    { id: "vit", name: "Team Vitality", tag: "VIT", region: "EU", rep: 95, stars: 2, color1: "#eab308", color2: "#111827", shape: "hexagon", budget: 500000, points: 0 },
-    { id: "m8", name: "Gentle Mates", tag: "M8", region: "EU", rep: 89, stars: 0, color1: "#ec4899", color2: "#ffffff", shape: "diamond", budget: 390000, points: 0 },
-    { id: "bds", name: "Team BDS", tag: "BDS", region: "EU", rep: 93, stars: 2, color1: "#f43f5e", color2: "#ffffff", shape: "shield", budget: 450000, points: 0 },
-    { id: "oxg", name: "Oxygen Esports", tag: "OXG", region: "EU", rep: 85, stars: 0, color1: "#10b981", color2: "#064e3b", shape: "circle", budget: 310000, points: 0 },
-    { id: "dig", name: "Dignitas EU", tag: "DIG", region: "EU", rep: 84, stars: 1, color1: "#f59e0b", color2: "#000000", shape: "shield", budget: 290000, points: 0 },
+    { id: "kc", name: "Karmine Corp", tag: "KC", region: "EU", rep: 94, stars: 0, car: "Fennec", arena: "Champions Field", color1: "#0055ff", color2: "#ffffff", shape: "modern", budget: 480000, points: 0 },
+    { id: "vit", name: "Team Vitality", tag: "VIT", region: "EU", rep: 95, stars: 2, car: "Fennec", arena: "Mannfield (Night)", color1: "#eab308", color2: "#111827", shape: "hexagon", budget: 500000, points: 0 },
+    { id: "m8", name: "Gentle Mates", tag: "M8", region: "EU", rep: 89, stars: 0, car: "Fennec", arena: "DFH Stadium", color1: "#ec4899", color2: "#ffffff", shape: "diamond", budget: 390000, points: 0 },
+    { id: "bds", name: "Team BDS", tag: "BDS", region: "EU", rep: 93, stars: 2, car: "Fennec", arena: "Utopia Coliseum", color1: "#f43f5e", color2: "#ffffff", shape: "shield", budget: 450000, points: 0 },
+    { id: "oxg", name: "Oxygen Esports", tag: "OXG", region: "EU", rep: 85, stars: 0, car: "Octane", arena: "Beckwith Park", color1: "#10b981", color2: "#064e3b", shape: "circle", budget: 310000, points: 0 },
+    { id: "dig", name: "Dignitas EU", tag: "DIG", region: "EU", rep: 84, stars: 1, car: "Octane", arena: "Neo Tokyo", color1: "#f59e0b", color2: "#000000", shape: "shield", budget: 290000, points: 0 },
 
     // NORTEAMÉRICA
-    { id: "g2", name: "G2 Stride", tag: "G2", region: "NA", rep: 94, stars: 0, color1: "#dc2626", color2: "#ffffff", shape: "shield", budget: 470000, points: 0 },
-    { id: "geng", name: "Gen.G Mobil1", tag: "GENG", region: "NA", rep: 91, stars: 0, color1: "#f59e0b", color2: "#000000", shape: "hexagon", budget: 420000, points: 0 },
-    { id: "ssg", name: "Spacestation", tag: "SSG", region: "NA", rep: 87, stars: 0, color1: "#facc15", color2: "#1e293b", shape: "circle", budget: 350000, points: 0 },
-    { id: "col", name: "Complexity", tag: "COL", region: "NA", rep: 86, stars: 0, color1: "#1d4ed8", color2: "#ffffff", shape: "shield", budget: 330000, points: 0 },
-    { id: "nrg", name: "NRG Esports", tag: "NRG", region: "NA", rep: 86, stars: 1, color1: "#111827", color2: "#ef4444", shape: "diamond", budget: 320000, points: 0 },
-    { id: "c9", name: "Cloud9", tag: "C9", region: "NA", rep: 85, stars: 1, color1: "#0284c7", color2: "#ffffff", shape: "circle", budget: 310000, points: 0 },
+    { id: "g2", name: "G2 Stride", tag: "G2", region: "NA", rep: 94, stars: 0, car: "Octane", arena: "Champions Field", color1: "#dc2626", color2: "#ffffff", shape: "shield", budget: 470000, points: 0 },
+    { id: "geng", name: "Gen.G Mobil1", tag: "GENG", region: "NA", rep: 91, stars: 0, car: "Fennec", arena: "Mannfield (Night)", color1: "#f59e0b", color2: "#000000", shape: "hexagon", budget: 420000, points: 0 },
+    { id: "ssg", name: "Spacestation", tag: "SSG", region: "NA", rep: 87, stars: 0, car: "Octane", arena: "Starbase ARC", color1: "#facc15", color2: "#1e293b", shape: "circle", budget: 350000, points: 0 },
+    { id: "col", name: "Complexity", tag: "COL", region: "NA", rep: 86, stars: 0, car: "Fennec", arena: "DFH Stadium", color1: "#1d4ed8", color2: "#ffffff", shape: "shield", budget: 330000, points: 0 },
+    { id: "nrg", name: "NRG Esports", tag: "NRG", region: "NA", rep: 86, stars: 1, car: "Octane", arena: "Champions Field", color1: "#111827", color2: "#ef4444", shape: "diamond", budget: 320000, points: 0 },
+    { id: "c9", name: "Cloud9", tag: "C9", region: "NA", rep: 85, stars: 1, car: "Octane", arena: "Utopia Coliseum", color1: "#0284c7", color2: "#ffffff", shape: "circle", budget: 310000, points: 0 },
 
     // SUDAMÉRICA
-    { id: "fur", name: "FURIA Esports", tag: "FUR", region: "SAM", rep: 91, stars: 0, color1: "#000000", color2: "#ffffff", shape: "shield", budget: 360000, points: 0 },
-    { id: "kru", name: "KRÜ Esports", tag: "KRU", region: "SAM", rep: 84, stars: 0, color1: "#ec4899", color2: "#111827", shape: "hexagon", budget: 250000, points: 0 },
-    { id: "sec", name: "Team Secret", tag: "SEC", region: "SAM", rep: 85, stars: 0, color1: "#1e293b", color2: "#38bdf8", shape: "diamond", budget: 260000, points: 0 },
-    { id: "9z", name: "9z Team", tag: "9Z", region: "SAM", rep: 81, stars: 0, color1: "#7c3aed", color2: "#ffffff", shape: "shield", budget: 210000, points: 0 },
-    { id: "lev", name: "Leviatán", tag: "LEV", region: "SAM", rep: 80, stars: 0, color1: "#0284c7", color2: "#ffffff", shape: "circle", budget: 200000, points: 0 },
-    { id: "nip", name: "Ninjas in Pyjamas", tag: "NIP", region: "SAM", rep: 83, stars: 0, color1: "#84cc16", color2: "#111827", shape: "hexagon", budget: 240000, points: 0 },
+    { id: "fur", name: "FURIA Esports", tag: "FUR", region: "SAM", rep: 91, stars: 0, car: "Fennec", arena: "Champions Field", color1: "#000000", color2: "#ffffff", shape: "shield", budget: 360000, points: 0 },
+    { id: "kru", name: "KRÜ Esports", tag: "KRU", region: "SAM", rep: 84, stars: 0, car: "Octane", arena: "Mannfield (Night)", color1: "#ec4899", color2: "#111827", shape: "hexagon", budget: 250000, points: 0 },
+    { id: "sec", name: "Team Secret", tag: "SEC", region: "SAM", rep: 85, stars: 0, car: "Fennec", arena: "DFH Stadium", color1: "#1e293b", color2: "#38bdf8", shape: "diamond", budget: 260000, points: 0 },
+    { id: "9z", name: "9z Team", tag: "9Z", region: "SAM", rep: 81, stars: 0, car: "Octane", arena: "Estadio Único LP", color1: "#7c3aed", color2: "#ffffff", shape: "shield", budget: 210000, points: 0 },
+    { id: "lev", name: "Leviatán", tag: "LEV", region: "SAM", rep: 80, stars: 0, car: "Fennec", arena: "AquaDome", color1: "#0284c7", color2: "#ffffff", shape: "circle", budget: 200000, points: 0 },
+    { id: "nip", name: "Ninjas in Pyjamas", tag: "NIP", region: "SAM", rep: 83, stars: 0, car: "Fennec", arena: "Neo Tokyo", color1: "#84cc16", color2: "#111827", shape: "hexagon", budget: 240000, points: 0 },
 
     // MEDIO ORIENTE
-    { id: "flc", name: "Team Falcons", tag: "FLC", region: "MENA", rep: 94, stars: 0, color1: "#16a34a", color2: "#ffffff", shape: "modern", budget: 550000, points: 0 },
-    { id: "tm", name: "Twisted Minds", tag: "TM", region: "MENA", rep: 86, stars: 0, color1: "#991b1b", color2: "#fbbf24", shape: "hexagon", budget: 320000, points: 0 },
-    { id: "r1", name: "Rule One", tag: "R1", region: "MENA", rep: 87, stars: 0, color1: "#2563eb", color2: "#facc15", shape: "diamond", budget: 340000, points: 0 },
-    { id: "gk", name: "Geekay Esports", tag: "GK", region: "MENA", rep: 81, stars: 0, color1: "#f97316", color2: "#ffffff", shape: "circle", budget: 220000, points: 0 }
+    { id: "flc", name: "Team Falcons", tag: "FLC", region: "MENA", rep: 94, stars: 0, car: "Fennec", arena: "Salty Shores", color1: "#16a34a", color2: "#ffffff", shape: "modern", budget: 550000, points: 0 },
+    { id: "tm", name: "Twisted Minds", tag: "TM", region: "MENA", rep: 86, stars: 0, car: "Octane", arena: "Deadeye Canyon", color1: "#991b1b", color2: "#fbbf24", shape: "hexagon", budget: 320000, points: 0 },
+    { id: "r1", name: "Rule One", tag: "R1", region: "MENA", rep: 87, stars: 0, car: "Fennec", arena: "Champions Field", color1: "#2563eb", color2: "#facc15", shape: "diamond", budget: 340000, points: 0 },
+    { id: "gk", name: "Geekay Esports", tag: "GK", region: "MENA", rep: 81, stars: 0, car: "Octane", arena: "Mannfield (Night)", color1: "#f97316", color2: "#ffffff", shape: "circle", budget: 220000, points: 0 }
   ],
 
-  // Jugadores con rol táctico (Striker / Playmaker / Third Man), contratos y estadísticas
   players: [
     // EU
     { id: "p1", name: "vatira", country: "FR", age: 19, ovr: 94, pot: 96, mec: 95, rot: 94, def: 93, role: "Third Man", contractYears: 2, teamId: "kc", starter: true, value: 820000, goals: 0, assists: 0, saves: 0, streak: 0 },
@@ -148,9 +147,23 @@ const InitialData = {
 
   sponsors: [
     { id: "sp_hyperx", name: "HyperX Gaming", upfront: 45000, bonusDesc: "+$30,000 por cada título ganado" },
-    { id: "sp_redbull", name: "Red Bull Esports", upfront: 65000, bonusDesc: "+$55,000 al llegar a un Major o Mundial" },
+    { id: "sp_redbull", name: "Red Bull Esports", upfront: 65000, bonusDesc: "+$55,000 al ganar un Major o Mundial" },
     { id: "sp_nvidia", name: "NVIDIA GeForce", upfront: 80000, bonusDesc: "+$20,000 si mantenés Química > 88%" }
   ],
+
+  // Perfiles variados de juveniles (12 a 14 años, de Champion III a SSL)
+  youthTemplates: [
+    { code: "C3_12", age: 12, rank: "C3", ovr: 66, potMin: 89, potMax: 95 },
+    { code: "GC1_13", age: 13, rank: "GC1", ovr: 69, potMin: 90, potMax: 96 },
+    { code: "GC1_14", age: 14, rank: "GC1", ovr: 71, potMin: 91, potMax: 96 },
+    { code: "GC2_12", age: 12, rank: "GC2", ovr: 72, potMin: 90, potMax: 95 },
+    { code: "GC2_13", age: 13, rank: "GC2", ovr: 74, potMin: 90, potMax: 95 },
+    { code: "GC3_13", age: 13, rank: "GC3", ovr: 76, potMin: 91, potMax: 97 },
+    { code: "GC3_14", age: 14, rank: "GC3", ovr: 78, potMin: 91, potMax: 97 },
+    { code: "SSL_14", age: 14, rank: "SSL", ovr: 81, potMin: 93, potMax: 98 }
+  ],
+
+  youthArchetypes: ["Freestyler", "Cerebro Táctico", "Ranked Demon 1v1", "Diamante en Bruto"],
 
   nationalLeagues: [
     {
