@@ -41,6 +41,7 @@ let GameState = {
   weeklyPrepDone: false,
   prepBonus: { ovr: 0, chem: 0 },
   incomingOffer: null,
+  pendingJobOffer: null,
   lockerEvent: null,
   news: [],
   currentOpponentId: null,
@@ -74,7 +75,7 @@ window.onload = () => {
   document.getElementById("hero-logo").innerHTML = Graphics.renderTrophy("rlcs_worlds", 68);
   updateCustomCrestPreview();
   renderSetupTeams();
-  if (localStorage.getItem("rl_career_save_v5")) {
+  if (localStorage.getItem("rl_career_save_v6") || localStorage.getItem("rl_career_save_v5")) {
     document.getElementById("btn-continue-save").style.display = "inline-block";
   }
 };
@@ -157,7 +158,6 @@ function startWithCustomTeam() {
   GameState.manager.rep = 68;
   recordManagerClubJoin(customTeam);
 
-  // Roster inicial modesto (73-76 OVR) para arrancar desde abajo
   const regionCountry = { SAM: "AR", EU: "FR", NA: "US", MENA: "SA" }[region] || "AR";
   const roles = ["Striker", "Playmaker", "Third Man"];
   const personalities = ["Promesa Ambiciosa", "Trabajador Silencioso", "Líder Nato"];
@@ -184,6 +184,7 @@ function startWithCustomTeam() {
     });
   }
 
+  runAIManagement();
   addNews(`🚀 ¡${name} (${tag}) inicia su camino desde abajo en la División Challenger de ${region}!`, "prodigy");
   launchGameUI();
 }
@@ -196,6 +197,7 @@ function startCareer(teamId) {
   GameState.selectedRegionTab = userTeam.region;
   GameState.manager.rep = Math.max(72, userTeam.rep - 4);
   recordManagerClubJoin(userTeam);
+  runAIManagement();
   addNews(`👔 ${GameState.manager.name} asumió como Head Manager de ${userTeam.name} (${userTeam.division}).`);
   launchGameUI();
 }
@@ -232,6 +234,7 @@ function initBaseState() {
   GameState.weeklyPrepDone = false;
   GameState.prepBonus = { ovr: 0, chem: 0 };
   GameState.incomingOffer = null;
+  GameState.pendingJobOffer = null;
   GameState.lockerEvent = null;
   GameState.news = [];
   buildNationalTables();
@@ -300,7 +303,6 @@ function getTeamChemistry(teamId) {
   if (countries[0] === countries[1] && countries[1] === countries[2]) chem += 7;
   else if (new Set(countries).size === 2) chem += 3;
 
-  // Dinámica de personalidades / egos
   const superstars = starters.filter(p => p.personality === "Superestrella").length;
   const leaders = starters.filter(p => p.personality === "Líder Nato").length;
   if (superstars >= 3 && leaders === 0) chem -= 10;
@@ -332,7 +334,7 @@ function getTeamOvr(teamId) {
   if (teamId === GameState.userTeamId) {
     if (GameState.bootcampActive) userBonus += 2;
     userBonus += (GameState.prepBonus?.ovr || 0);
-    userBonus += (GameState.facilities.gamingHouse - 1) * 0.6;
+    userBonus += ((GameState.facilities?.gamingHouse || 1) - 1) * 0.6;
   }
   return Math.round(base + chemBonus + coachBonus + userBonus);
 }
@@ -361,7 +363,7 @@ function refreshAllUI() {
   document.getElementById("top-club-crest").innerHTML = Graphics.renderCrest(team, 46);
   document.getElementById("top-club-name").textContent = team.name;
   document.getElementById("top-club-meta").textContent = `${team.region} (${team.division}) • OVR ${ovr} • Química ${chem}%`;
-  document.getElementById("top-season").textContent = `${GameState.season} • ${GameState.metaPatch.split(":")[0]}`;
+  document.getElementById("top-season").textContent = `${GameState.season} • ${(GameState.metaPatch || "").split(":")[0]}`;
   document.getElementById("top-stage").textContent = stage.compName;
   document.getElementById("top-budget").textContent = "$" + team.budget.toLocaleString();
   document.getElementById("top-points").textContent = `${team.points} pts • Conf. ${GameState.manager.confidence}%`;
@@ -421,7 +423,6 @@ function updateSwissStandings(userWon, oppId) {
 }
 
 function generateTournamentBracket() {
-  const userTeam = getUserTeam();
   const top8Ids = GameState.swissStandings.map(s => s.teamId);
   let pool = top8Ids.map(id => getTeamById(id)).filter(Boolean);
   while (pool.length < 8) {
@@ -503,7 +504,7 @@ function applyWeeklyPrep(type) {
     addNews("🧠 Análisis táctico y revisión de replays (+4 Química para la serie).");
   } else if (type === "REST") {
     GameState.prepBonus = { ovr: 0, chem: 0 };
-    const mediaGain = 8000 + (GameState.facilities.marketing - 1) * 4000;
+    const mediaGain = 8000 + ((GameState.facilities?.marketing || 1) - 1) * 4000;
     userTeam.budget += mediaGain;
     starters.forEach(p => p.stamina = Math.min(100, (p.stamina ?? 100) + 22));
     addNews(`🔋 Descanso y Media Day (+22% Energía en todo el roster y +$${mediaGain.toLocaleString()} de sponsors).`);
@@ -579,7 +580,6 @@ function renderOffice() {
     </div>
   `;
 
-  // Oferta de trabajo de otro club (Estilo FIFA DT)
   const jobBox = document.getElementById("job-offer-box");
   if (GameState.pendingJobOffer) {
     const j = GameState.pendingJobOffer;
@@ -596,7 +596,6 @@ function renderOffice() {
     jobBox.innerHTML = "";
   }
 
-  // Evento de vestuario / crisis
   const lockerBox = document.getElementById("locker-event-box");
   if (GameState.lockerEvent) {
     const ev = GameState.lockerEvent;
@@ -613,7 +612,6 @@ function renderOffice() {
     lockerBox.innerHTML = "";
   }
 
-  // Ofertas entrantes por jugadores
   const offerBox = document.getElementById("incoming-offer-box");
   if (GameState.incomingOffer) {
     const o = GameState.incomingOffer;
@@ -983,8 +981,7 @@ function finalizeSeriesResult(homeWins, awayWins) {
     GameState.manager.confidence = Math.max(15, GameState.manager.confidence - 5);
   }
 
-  // Desgaste de energía en titulares y recuperación en suplentes
-  const ghDiscount = (GameState.facilities.gamingHouse - 1) * 2;
+  const ghDiscount = ((GameState.facilities?.gamingHouse || 1) - 1) * 2;
   getTeamRoster(userTeam.id, false).forEach(p => {
     if (p.starter) {
       p.streak = won ? (p.streak || 0) + 1 : 0;
@@ -1026,7 +1023,6 @@ function finalizeSeriesResult(homeWins, awayWins) {
     userTeam.budget += Math.round(stage.prize * 0.25);
     addNews(`❌ Derrota ${homeWins}-${awayWins} ante ${opp.name} en ${stage.compName} (${stage.roundName}).`);
 
-    // Si perdiste en la ronda decisiva de Suiza o en Playoffs, quedás eliminado del torneo actual
     if (stage.stageType === "SWISS_END" || stage.stageType === "QF" || stage.stageType === "SF") {
       eliminatedFromCurrentEvent = true;
       const aiWinner = GameState.teams.filter(t => t.id !== userTeam.id).sort((a, b) => getTeamOvr(b.id) - getTeamOvr(a.id))[0];
@@ -1066,7 +1062,6 @@ function finalizeSeriesResult(homeWins, awayWins) {
     }
   });
 
-  // Posibilidad de oferta de trabajo de otro club (Modo Carrera FIFA DT)
   if (!GameState.pendingJobOffer && Math.random() < 0.14) {
     const suitors = GameState.teams.filter(t => t.id !== userTeam.id && t.rep <= GameState.manager.rep + 6 && t.rep >= GameState.manager.rep - 6);
     if (suitors.length > 0) {
@@ -1075,7 +1070,6 @@ function finalizeSeriesResult(homeWins, awayWins) {
     }
   }
 
-  // Ofertas por jugadores
   if (!GameState.incomingOffer && Math.random() < 0.18) {
     const myPlayers = getTeamRoster(userTeam.id, false);
     const buyers = GameState.teams.filter(t => t.id !== userTeam.id && t.budget > 220000);
@@ -1089,7 +1083,6 @@ function finalizeSeriesResult(homeWins, awayWins) {
     }
   }
 
-  // Conferencia de prensa antes de finales
   if (won && stage.stageType === "SF" && Math.random() < 0.65) {
     openPressConferenceModal();
   }
@@ -1099,7 +1092,6 @@ function finalizeSeriesResult(homeWins, awayWins) {
 
   const currentEventKey = stage.eventKey;
   if (eliminatedFromCurrentEvent) {
-    // Avanza directamente al próximo torneo del calendario
     while (GameState.scheduleIndex < InitialData.seasonSchedule.length && InitialData.seasonSchedule[GameState.scheduleIndex].eventKey === currentEventKey) {
       GameState.scheduleIndex++;
     }
@@ -1107,7 +1099,6 @@ function finalizeSeriesResult(homeWins, awayWins) {
     GameState.scheduleIndex++;
   }
 
-  // Verificar clasificación real a Majors o Mundial RLCS
   if (GameState.scheduleIndex < InitialData.seasonSchedule.length) {
     const nextStage = InitialData.seasonSchedule[GameState.scheduleIndex];
     if (nextStage.eventKey !== currentEventKey) {
@@ -1757,7 +1748,7 @@ function promoteProspectToFirstTeam(prospectId) {
 function progressAcademyStep() {
   const coach = getTeamCoach(getUserTeam().id);
   const formadorBonus = (coach && coach.specialty.includes("Formador")) ? 0.08 : 0;
-  const facilityBonus = (GameState.facilities.academy - 1) * 0.04;
+  const facilityBonus = ((GameState.facilities?.academy || 1) - 1) * 0.04;
   const mgrBonus = GameState.manager.specialty === "ACADEMY" ? 0.06 : 0;
 
   GameState.academyProspects.forEach(p => {
@@ -1908,7 +1899,6 @@ function openNegotiationModal(playerId) {
   `;
   document.getElementById("neg-offer-amount").value = discValue;
 
-  // Poblar selector de intercambio (Trade)
   const myRoster = getTeamRoster(GameState.userTeamId, false);
   const tradeSel = document.getElementById("neg-trade-player");
   tradeSel.innerHTML = `<option value="">Solo dinero (Sin jugador a cambio)</option>` +
@@ -2005,7 +1995,7 @@ function renderCareerTab() {
     </div>
   `;
 
-  const f = GameState.facilities;
+  const f = GameState.facilities || { gamingHouse: 1, academy: 1, marketing: 1 };
   document.getElementById("club-facilities-box").innerHTML = `
     <div class="academy-item">
       <div><strong>🏠 Gaming House (Nivel ${f.gamingHouse}/5)</strong><div class="muted">Reduce el desgaste de energía mental entre series.</div></div>
@@ -2025,7 +2015,6 @@ function renderCareerTab() {
     <div class="news-item"><strong>${h.teamName} (${h.region})</strong> • Temp. ${h.fromSeason} - ${h.toSeason} • Títulos ganados aquí: ${h.titles}</div>
   `).join("");
 
-  // Clubes disponibles para cambiar de equipo estilo FIFA Modo Carrera
   const jobs = GameState.teams
     .filter(t => t.id !== userTeam.id)
     .sort((a, b) => b.rep - a.rep);
@@ -2051,6 +2040,7 @@ function renderCareerTab() {
 
 function upgradeFacility(key) {
   const userTeam = getUserTeam();
+  if (!GameState.facilities) GameState.facilities = { gamingHouse: 1, academy: 1, marketing: 1 };
   const lvl = GameState.facilities[key];
   if (lvl >= 5) return alert("Instalación ya está al máximo (Nivel 5).");
   const cost = lvl * 45000;
@@ -2074,13 +2064,11 @@ function acceptJobOffer(newTeamId) {
   GameState.activeSponsor = null;
   recordManagerClubJoin(newTeam);
 
-  // Transferir propiedad de "Mi Cantera" al nuevo club o mantenerla en la org anterior
   GameState.academyProspects.forEach(p => {
-    if (p.isUserAcademy) {
-      p.isUserAcademy = false;
-    }
+    if (p.isUserAcademy) p.isUserAcademy = false;
   });
 
+  runAIManagement();
   addNews(`👔 ¡CAMBIO DE CLUB! ${GameState.manager.name} dejó su cargo anterior y asumió como nuevo DT de ${newTeam.name} (${newTeam.region}).`, "prodigy");
   initSwissForCurrentEvent();
   generateTournamentBracket();
@@ -2183,14 +2171,152 @@ function createCustomPerson() {
   refreshAllUI();
 }
 
-// CAMBIO DE TEMPORADA (INCLUYE ASCENSOS/DESCENSOS Y NUEVO PARCHE META)
+// GESTIÓN AUTÓNOMA DE LA IA (FICHAJES, CANTERAS Y ALINEACIONES)
+function runAIManagement() {
+  const countriesByRegion = {
+    EU: ["FR", "GB", "DE", "NL", "BE", "ES"],
+    NA: ["US", "CA"],
+    SAM: ["BR", "AR", "CL"],
+    MENA: ["SA", "MA"]
+  };
+  const roles = ["Striker", "Playmaker", "Third Man"];
+
+  GameState.teams.forEach(team => {
+    if (team.id === GameState.userTeamId) return;
+
+    team.budget += team.division === "PRO" ? 160000 : 75000;
+
+    // 1. Cantera propia para cada club de la IA
+    const teamProspects = GameState.academyProspects.filter(p => p.ownerTeamId === team.id);
+    if (teamProspects.length < 2) {
+      const regCountries = countriesByRegion[team.region] || ["AR"];
+      const c = regCountries[Math.floor(Math.random() * regCountries.length)];
+      const baseOvr = team.division === "PRO" ? 72 + Math.floor(Math.random() * 6) : 67 + Math.floor(Math.random() * 5);
+      const pot = Math.min(97, baseOvr + 14 + Math.floor(Math.random() * 7));
+      GameState.academyProspects.push({
+        id: "ai_acad_" + Date.now() + "_" + Math.random(),
+        name: generateUniqueName(),
+        country: c,
+        age: 13 + Math.floor(Math.random() * 2),
+        rank: baseOvr >= 76 ? "GC3" : (baseOvr >= 72 ? "GC2" : "GC1"),
+        archetype: InitialData.youthArchetypes[Math.floor(Math.random() * InitialData.youthArchetypes.length)],
+        ovr: baseOvr,
+        pot,
+        ownerTeamId: team.id,
+        isUserAcademy: false,
+        loanLeagueId: null,
+        loanClub: null,
+        loanGoals: 0,
+        loanAssists: 0
+      });
+    }
+
+    // 2. Asegurar mínimo 3 jugadores en cada organización
+    let roster = getTeamRoster(team.id, false);
+    const targetMinOvr = team.division === "PRO" ? 83 : 74;
+
+    while (roster.length < 3) {
+      let freeAgents = GameState.players
+        .filter(p => !p.teamId && p.ovr >= targetMinOvr - 4)
+        .sort((a, b) => b.ovr - a.ovr);
+
+      if (freeAgents.length > 0) {
+        const sign = freeAgents[0];
+        sign.teamId = team.id;
+        sign.contractYears = 2;
+        sign.starter = true;
+        team.budget = Math.max(20000, team.budget - Math.round(sign.value * 0.5));
+      } else {
+        const regCountries = countriesByRegion[team.region] || ["AR"];
+        const c = regCountries[Math.floor(Math.random() * regCountries.length)];
+        const newOvr = team.division === "PRO"
+          ? 81 + Math.floor(Math.random() * 8)
+          : 74 + Math.floor(Math.random() * 6);
+        const newPot = Math.min(97, newOvr + 4 + Math.floor(Math.random() * 6));
+        GameState.players.push({
+          id: "ai_gen_" + Date.now() + "_" + Math.random(),
+          name: generateUniqueName(),
+          country: c,
+          age: 15 + Math.floor(Math.random() * 4),
+          ovr: newOvr,
+          pot: newPot,
+          mec: newOvr + 1,
+          rot: newOvr,
+          def: newOvr - 1,
+          role: roles[roster.length % 3],
+          personality: "Promesa Ambiciosa",
+          contractYears: 3,
+          teamId: team.id,
+          starter: true,
+          stamina: 100,
+          value: newOvr * 4200,
+          goals: 0, assists: 0, saves: 0, streak: 0
+        });
+      }
+      roster = getTeamRoster(team.id, false);
+    }
+
+    // 3. Mercado activo entre clubes de la IA
+    if (team.division === "PRO" && team.budget > 320000 && Math.random() < 0.45) {
+      const weakest = [...roster].sort((a, b) => a.ovr - b.ovr)[0];
+      const candidates = GameState.players
+        .filter(p => p.teamId && p.teamId !== team.id && p.teamId !== GameState.userTeamId && p.ovr > weakest.ovr + 2 && p.value <= team.budget * 0.75)
+        .sort((a, b) => b.ovr - a.ovr);
+
+      if (candidates.length > 0) {
+        const star = candidates[0];
+        const seller = getTeamById(star.teamId);
+        if (seller && getTeamRoster(seller.id, false).length > 3) {
+          team.budget -= star.value;
+          seller.budget += star.value;
+          star.teamId = team.id;
+          star.contractYears = 2;
+          addNews(`💸 Mercado IA: ${team.name} fichó a ${star.name} (OVR ${star.ovr}) desde ${seller.name} por $${star.value.toLocaleString()}.`);
+        }
+      }
+    }
+
+    // 4. Garantizar 3 titulares activos
+    roster = getTeamRoster(team.id, false).sort((a, b) => b.ovr - a.ovr);
+    roster.forEach((p, idx) => {
+      p.starter = idx < 3;
+    });
+  });
+
+  // Mantener siempre agentes libres disponibles
+  const freeCount = GameState.players.filter(p => !p.teamId).length;
+  if (freeCount < 6) {
+    const allCountries = ["AR", "CL", "BR", "FR", "US", "SA", "ES", "GB"];
+    for (let i = freeCount; i < 8; i++) {
+      const ovr = 76 + Math.floor(Math.random() * 11);
+      GameState.players.push({
+        id: "fa_gen_" + Date.now() + "_" + i,
+        name: generateUniqueName(),
+        country: allCountries[Math.floor(Math.random() * allCountries.length)],
+        age: 17 + Math.floor(Math.random() * 6),
+        ovr,
+        pot: Math.min(96, ovr + 5),
+        mec: ovr + 1, rot: ovr, def: ovr - 1,
+        role: roles[i % 3],
+        personality: "Trabajador Silencioso",
+        contractYears: 0,
+        teamId: null,
+        starter: false,
+        stamina: 100,
+        value: ovr * 3800,
+        goals: 0, assists: 0, saves: 0, streak: 0
+      });
+    }
+  }
+}
+
+// CAMBIO DE TEMPORADA
 function advanceNewSeason() {
   if (GameState.activeSponsor?.id === "sp_nvidia" && getTeamChemistry(GameState.userTeamId) >= 88) {
     getUserTeam().budget += 20000;
     addNews(`💼 Bono NVIDIA: +$20,000 por mantener química superior al 88%.`);
   }
 
-  // Ascensos y Descensos por región
   ["EU", "NA", "SAM", "MENA"].forEach(reg => {
     const proList = GameState.teams.filter(t => t.region === reg && t.division === "PRO").sort((a, b) => b.points - a.points);
     const chalList = GameState.teams.filter(t => t.region === reg && t.division === "CHALLENGER").sort((a, b) => b.points - a.points);
@@ -2243,9 +2369,20 @@ function advanceNewSeason() {
     if (p.teamId) {
       p.contractYears = (p.contractYears || 1) - 1;
       if (p.contractYears <= 0) {
-        if (p.teamId === GameState.userTeamId) addNews(`⚠️ Venció el contrato de ${p.name} y quedó como Agente Libre.`);
-        p.teamId = null;
-        p.starter = false;
+        if (p.teamId === GameState.userTeamId) {
+          addNews(`⚠️ Venció el contrato de ${p.name} y quedó como Agente Libre.`);
+          p.teamId = null;
+          p.starter = false;
+        } else {
+          const aiTeam = getTeamById(p.teamId);
+          if (aiTeam && aiTeam.budget >= Math.round(p.value * 0.15) && Math.random() < 0.75) {
+            aiTeam.budget -= Math.round(p.value * 0.15);
+            p.contractYears = 2;
+          } else {
+            p.teamId = null;
+            p.starter = false;
+          }
+        }
       }
     }
 
@@ -2275,6 +2412,8 @@ function advanceNewSeason() {
     return true;
   });
 
+  runAIManagement();
+
   triggerProspectDiscovery();
   triggerProspectDiscovery();
   initSwissForCurrentEvent();
@@ -2285,19 +2424,23 @@ function advanceNewSeason() {
 }
 
 function saveGame(notify) {
-  localStorage.setItem("rl_career_save_v5", JSON.stringify(GameState));
-  if (notify) alert("Carrera v5.0 guardada correctamente.");
+  localStorage.setItem("rl_career_save_v6", JSON.stringify(GameState));
+  if (notify) alert("Carrera v6.0 guardada correctamente.");
 }
 
 function loadSavedGame() {
-  const raw = localStorage.getItem("rl_career_save_v5");
+  const raw = localStorage.getItem("rl_career_save_v6") || localStorage.getItem("rl_career_save_v5");
   if (!raw) return;
   GameState = JSON.parse(raw);
+  if (!GameState.facilities) GameState.facilities = { gamingHouse: 1, academy: 1, marketing: 1 };
+  if (!GameState.manager) GameState.manager = { name: "Tomy", country: "AR", specialty: "ACADEMY", rep: 75, confidence: 80, history: [] };
+  runAIManagement();
   launchGameUI();
 }
 
 function resetCareer() {
   if (confirm("¿Seguro que querés reiniciar y volver al menú?")) {
+    localStorage.removeItem("rl_career_save_v6");
     localStorage.removeItem("rl_career_save_v5");
     location.reload();
   }
