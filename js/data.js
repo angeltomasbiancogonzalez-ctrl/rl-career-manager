@@ -163,7 +163,7 @@ const InitialData = {
     { id: "p95", name: "Nadr", country: "SA", age: 20, ovr: 78, pot: 82, mec: 78, rot: 79, def: 78, role: "Playmaker", personality: "Trabajador Silencioso", contractYears: 2, teamId: "alh", starter: true, stamina: 100, value: 90000, goals: 0, assists: 0, saves: 0, streak: 0 },
     { id: "p96", name: "imkhaled", country: "SA", age: 19, ovr: 78, pot: 83, mec: 77, rot: 79, def: 78, role: "Third Man", personality: "Trabajador Silencioso", contractYears: 2, teamId: "alh", starter: true, stamina: 100, value: 88000, goals: 0, assists: 0, saves: 0, streak: 0 },
 
-    // Agentes libres (accesibles para clubes chicos)
+    // Agentes libres
     { id: "p55", name: "Squishy", country: "CA", age: 25, ovr: 84, pot: 84, mec: 83, rot: 86, def: 84, role: "Playmaker", personality: "Líder Nato", contractYears: 0, teamId: null, starter: false, stamina: 100, value: 130000, goals: 0, assists: 0, saves: 0, streak: 0 },
     { id: "p56", name: "Scrub Killa", country: "GB", age: 23, ovr: 83, pot: 84, mec: 84, rot: 82, def: 83, role: "Striker", personality: "Superestrella", contractYears: 0, teamId: null, starter: false, stamina: 100, value: 120000, goals: 0, assists: 0, saves: 0, streak: 0 },
     { id: "p57", name: "Caard", country: "BR", age: 23, ovr: 84, pot: 85, mec: 84, rot: 84, def: 84, role: "Third Man", personality: "Líder Nato", contractYears: 0, teamId: null, starter: false, stamina: 100, value: 135000, goals: 0, assists: 0, saves: 0, streak: 0 },
@@ -219,7 +219,6 @@ const InitialData = {
     { id: "liga_sa", name: "Saudi eLeague RL", country: "SA", clubs: ["Falcons Academy", "Al-Nassr Esports", "Al-Hilal RL", "Al-Ittihad Gaming"] }
   ],
 
-  // Calendario RLCS Oficial Real (Split 1 -> Paris Major -> Split 2 -> Boston Major -> LCQ -> Mundial -> Club WC -> FIFAe WC)
   seasonSchedule: [
     // SPLIT 1 - OPEN 1
     { compId: "rlcs_regional", eventKey: "O1", compName: "Open Regional 1", roundName: "Fase Suiza • Ronda 1 (0-0)", format: "Bo5", stageType: "SWISS", isFinal: false, prize: 8000, points: 6 },
@@ -235,7 +234,7 @@ const InitialData = {
     { compId: "rlcs_regional", eventKey: "O2", compName: "Open Regional 2", roundName: "Playoffs • Semifinal", format: "Bo7", stageType: "SF", isFinal: false, prize: 24000, points: 20 },
     { compId: "rlcs_regional", eventKey: "O2", compName: "Open Regional 2", roundName: "Gran Final • Open Regional 2", format: "Bo7", stageType: "GF", isFinal: true, prize: 42000, points: 32 },
 
-    // MAJOR 1 (Clasificación real por puntos RLCS)
+    // MAJOR 1
     { compId: "paris_major", eventKey: "M1", compName: "Paris Major (LAN)", roundName: "Fase Suiza LAN (Accor Arena)", format: "Bo5", stageType: "SWISS_END", isFinal: false, prize: 25000, points: 18 },
     { compId: "paris_major", eventKey: "M1", compName: "Paris Major (LAN)", roundName: "Cuartos de Final LAN", format: "Bo7", stageType: "QF", isFinal: false, prize: 40000, points: 28 },
     { compId: "paris_major", eventKey: "M1", compName: "Paris Major (LAN)", roundName: "Semifinal LAN", format: "Bo7", stageType: "SF", isFinal: false, prize: 60000, points: 42 },
