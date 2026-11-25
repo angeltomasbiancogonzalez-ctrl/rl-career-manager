@@ -1,51 +1,189 @@
+/* ==========================================================================
+   RL CAREER MANAGER v8.0 — BASE DE DATOS OFICIAL (js/data.js)
+   Incluye: Parches Meta, Clubes Pro & Challenger (EU, NA, SAM, MENA),
+   Jugadores con roles tácticos, Coaches, Sponsors, Scouts, Federaciones FIFAe,
+   Ligas Nacionales, Calendario RLCS y Plantillas de Cantera.
+   ========================================================================== */
+
 const InitialData = {
+  // 1. PARCHES DE META COMPETITIVO
   metaPatches: [
-    "Control Aéreo & Flip Resets (+Efectividad en jugadas aéreas)",
+    "Control Aéreo & Flip Resets (+Efectividad en jugadas aéreas y double taps)",
     "Bump & Demo Meta (+Impacto de presión física y robos de boost)",
     "Juego de Pases Rápidos (+Bono por Química alta en equipo)",
-    "Cerrojo Defensivo & Contraataque (+Solidez de Third Man)"
+    "Cerrojo Defensivo & Contraataque (+Solidez de Third Man y atajadas)"
   ],
 
+  // 2. CLUBES OFICIALES POR REGIÓN Y DIVISIÓN (PRO Y CHALLENGER)
   teams: [
-    // EUROPA (PRO)
-    { id: "kc", name: "Karmine Corp", tag: "KC", region: "EU", division: "PRO", budget: 650000, rep: 95, stars: 0, car: "Fennec", arena: "Champions Field", color1: "#0077ff", color2: "#ffffff", shape: "shield", pattern: "split" },
-    { id: "vit", name: "Team Vitality", tag: "VIT", region: "EU", division: "PRO", budget: 640000, rep: 94, stars: 2, car: "Fennec", arena: "Mannfield (Night)", color1: "#facc15", color2: "#111827", shape: "hexagon", pattern: "chevron" },
-    { id: "bds", name: "Team BDS", tag: "BDS", region: "EU", division: "PRO", budget: 610000, rep: 93, stars: 2, car: "Fennec", arena: "DFH Stadium", color1: "#ec4899", color2: "#1e1b4b", shape: "shield", pattern: "sash" },
-    { id: "gm8", name: "Gentle Mates Alpine", tag: "M8", region: "EU", division: "PRO", budget: 560000, rep: 90, stars: 0, car: "Fennec", arena: "Utopia Coliseum", color1: "#10b981", color2: "#064e3b", shape: "circle", pattern: "stripe" },
-    { id: "oxg", name: "Oxygen Esports", tag: "OXG", region: "EU", division: "PRO", budget: 480000, rep: 86, stars: 0, car: "Octane", arena: "Neo Tokyo", color1: "#22c55e", color2: "#0f172a", shape: "diamond", pattern: "solid" },
-    { id: "dig_eu", name: "Dignitas EU", tag: "DIG", region: "EU", division: "PRO", budget: 470000, rep: 85, stars: 1, car: "Octane", arena: "Champions Field", color1: "#f59e0b", color2: "#18181b", shape: "shield", pattern: "split" },
-    // EUROPA (CHALLENGER - 2DA DIVISIÓN)
-    { id: "sol_eu", name: "Solary", tag: "SLY", region: "EU", division: "CHALLENGER", budget: 310000, rep: 78, stars: 0, car: "Fennec", arena: "Beckwith Park", color1: "#eab308", color2: "#1e293b", shape: "circle", pattern: "split" },
-    { id: "gia_eu", name: "GIANTX", tag: "GX", region: "EU", division: "CHALLENGER", budget: 320000, rep: 79, stars: 0, car: "Octane", arena: "Urban Central", color1: "#38bdf8", color2: "#090d16", shape: "hexagon", pattern: "stripe" },
+    // --- EUROPA (PRO) ---
+    {
+      id: "kc", name: "Karmine Corp", tag: "KC", region: "EU", division: "PRO",
+      budget: 680000, rep: 95, stars: 0, car: "Fennec", arena: "Champions Field",
+      color1: "#0077ff", color2: "#ffffff", shape: "shield", pattern: "split"
+    },
+    {
+      id: "vit", name: "Team Vitality", tag: "VIT", region: "EU", division: "PRO",
+      budget: 660000, rep: 94, stars: 2, car: "Fennec", arena: "Mannfield (Night)",
+      color1: "#facc15", color2: "#111827", shape: "hexagon", pattern: "chevron"
+    },
+    {
+      id: "bds", name: "Team BDS", tag: "BDS", region: "EU", division: "PRO",
+      budget: 630000, rep: 93, stars: 2, car: "Fennec", arena: "DFH Stadium",
+      color1: "#ec4899", color2: "#1e1b4b", shape: "shield", pattern: "sash"
+    },
+    {
+      id: "gm8", name: "Gentle Mates Alpine", tag: "M8", region: "EU", division: "PRO",
+      budget: 580000, rep: 90, stars: 0, car: "Fennec", arena: "Utopia Coliseum",
+      color1: "#10b981", color2: "#064e3b", shape: "circle", pattern: "stripe"
+    },
+    {
+      id: "oxg", name: "Oxygen Esports", tag: "OXG", region: "EU", division: "PRO",
+      budget: 500000, rep: 86, stars: 0, car: "Octane", arena: "Neo Tokyo",
+      color1: "#22c55e", color2: "#0f172a", shape: "diamond", pattern: "solid"
+    },
+    {
+      id: "dig_eu", name: "Dignitas EU", tag: "DIG", region: "EU", division: "PRO",
+      budget: 490000, rep: 85, stars: 1, car: "Octane", arena: "Champions Field",
+      color1: "#f59e0b", color2: "#18181b", shape: "shield", pattern: "split"
+    },
 
-    // NORTEAMÉRICA (PRO)
-    { id: "g2", name: "G2 Stride", tag: "G2", region: "NA", division: "PRO", budget: 640000, rep: 94, stars: 0, car: "Fennec", arena: "DFH Stadium", color1: "#ef4444", color2: "#111827", shape: "hexagon", pattern: "stripe" },
-    { id: "geng", name: "Gen.G Mobil1", tag: "GENG", region: "NA", division: "PRO", budget: 590000, rep: 91, stars: 0, car: "Fennec", arena: "Champions Field", color1: "#eab308", color2: "#090d16", shape: "shield", pattern: "sash" },
-    { id: "ssg", name: "Spacestation Gaming", tag: "SSG", region: "NA", division: "PRO", budget: 530000, rep: 89, stars: 0, car: "Octane", arena: "Starbase ARC", color1: "#facc15", color2: "#1e293b", shape: "diamond", pattern: "chevron" },
-    { id: "nrg", name: "NRG Esports", tag: "NRG", region: "NA", division: "PRO", budget: 510000, rep: 87, stars: 1, car: "Octane", arena: "Mannfield (Night)", color1: "#ffffff", color2: "#111827", shape: "shield", pattern: "split" },
-    { id: "col", name: "Complexity Gaming", tag: "COL", region: "NA", division: "PRO", budget: 480000, rep: 86, stars: 0, car: "Fennec", arena: "Wasteland", color1: "#1d4ed8", color2: "#ffffff", shape: "circle", pattern: "stripe" },
-    { id: "c9", name: "Cloud9", tag: "C9", region: "NA", division: "PRO", budget: 520000, rep: 88, stars: 1, car: "Octane", arena: "Utopia Coliseum", color1: "#38bdf8", color2: "#ffffff", shape: "hexagon", pattern: "solid" },
-    // NORTEAMÉRICA (CHALLENGER)
-    { id: "dig_na", name: "Shopify Rebellion", tag: "SR", region: "NA", division: "CHALLENGER", budget: 330000, rep: 80, stars: 0, car: "Fennec", arena: "Beckwith Park", color1: "#84cc16", color2: "#0f172a", shape: "shield", pattern: "sash" },
-    { id: "nrg_ac", name: "Pittsburgh Knights", tag: "PK", region: "NA", division: "CHALLENGER", budget: 290000, rep: 77, stars: 0, car: "Dominus", arena: "Urban Central", color1: "#facc15", color2: "#000000", shape: "diamond", pattern: "split" },
+    // --- EUROPA (CHALLENGER - 2DA DIVISIÓN) ---
+    {
+      id: "sol_eu", name: "Solary", tag: "SLY", region: "EU", division: "CHALLENGER",
+      budget: 330000, rep: 78, stars: 0, car: "Fennec", arena: "Beckwith Park",
+      color1: "#eab308", color2: "#1e293b", shape: "circle", pattern: "split"
+    },
+    {
+      id: "gia_eu", name: "GIANTX", tag: "GX", region: "EU", division: "CHALLENGER",
+      budget: 340000, rep: 79, stars: 0, car: "Octane", arena: "Urban Central",
+      color1: "#38bdf8", color2: "#090d16", shape: "hexagon", pattern: "stripe"
+    },
+    {
+      id: "end_eu", name: "Endpoint CeX", tag: "END", region: "EU", division: "CHALLENGER",
+      budget: 315000, rep: 77, stars: 0, car: "Fennec", arena: "DFH Stadium",
+      color1: "#06b6d4", color2: "#111827", shape: "shield", pattern: "chevron"
+    },
 
-    // SUDAMÉRICA (PRO)
-    { id: "furia", name: "FURIA Esports", tag: "FUR", region: "SAM", division: "PRO", budget: 550000, rep: 91, stars: 0, car: "Fennec", arena: "Champions Field", color1: "#111827", color2: "#f8fafc", shape: "shield", pattern: "sash" },
-    { id: "ts", name: "Team Secret", tag: "TS", region: "SAM", division: "PRO", budget: 440000, rep: 85, stars: 0, car: "Octane", arena: "DFH Stadium", color1: "#0f172a", color2: "#38bdf8", shape: "hexagon", pattern: "split" },
-    { id: "kru", name: "KRÜ Esports", tag: "KRU", region: "SAM", division: "PRO", budget: 450000, rep: 86, stars: 0, car: "Fennec", arena: "Neo Tokyo", color1: "#ec4899", color2: "#111827", shape: "diamond", pattern: "chevron" },
-    { id: "nip", name: "Ninjas in Pyjamas", tag: "NIP", region: "SAM", division: "PRO", budget: 460000, rep: 86, stars: 0, car: "Fennec", arena: "Mannfield (Night)", color1: "#a3e635", color2: "#1e1b4b", shape: "circle", pattern: "sash" },
-    // SUDAMÉRICA (CHALLENGER)
-    { id: "lev", name: "Leviatán Esports", tag: "LEV", region: "SAM", division: "CHALLENGER", budget: 310000, rep: 80, stars: 0, car: "Fennec", arena: "Urban Central", color1: "#0284c7", color2: "#0f172a", shape: "shield", pattern: "stripe" },
-    { id: "9z", name: "9z Team", tag: "9Z", region: "SAM", division: "CHALLENGER", budget: 300000, rep: 79, stars: 0, car: "Octane", arena: "Beckwith Park", color1: "#7e22ce", color2: "#ffffff", shape: "hexagon", pattern: "solid" },
+    // --- NORTEAMÉRICA (PRO) ---
+    {
+      id: "g2", name: "G2 Stride", tag: "G2", region: "NA", division: "PRO",
+      budget: 660000, rep: 94, stars: 0, car: "Fennec", arena: "DFH Stadium",
+      color1: "#ef4444", color2: "#111827", shape: "hexagon", pattern: "stripe"
+    },
+    {
+      id: "geng", name: "Gen.G Mobil1", tag: "GENG", region: "NA", division: "PRO",
+      budget: 610000, rep: 91, stars: 0, car: "Fennec", arena: "Champions Field",
+      color1: "#eab308", color2: "#090d16", shape: "shield", pattern: "sash"
+    },
+    {
+      id: "ssg", name: "Spacestation Gaming", tag: "SSG", region: "NA", division: "PRO",
+      budget: 550000, rep: 89, stars: 0, car: "Octane", arena: "Starbase ARC",
+      color1: "#facc15", color2: "#1e293b", shape: "diamond", pattern: "chevron"
+    },
+    {
+      id: "nrg", name: "NRG Esports", tag: "NRG", region: "NA", division: "PRO",
+      budget: 530000, rep: 87, stars: 1, car: "Octane", arena: "Mannfield (Night)",
+      color1: "#ffffff", color2: "#111827", shape: "shield", pattern: "split"
+    },
+    {
+      id: "col", name: "Complexity Gaming", tag: "COL", region: "NA", division: "PRO",
+      budget: 500000, rep: 86, stars: 0, car: "Fennec", arena: "Wasteland",
+      color1: "#1d4ed8", color2: "#ffffff", shape: "circle", pattern: "stripe"
+    },
+    {
+      id: "c9", name: "Cloud9", tag: "C9", region: "NA", division: "PRO",
+      budget: 540000, rep: 88, stars: 1, car: "Octane", arena: "Utopia Coliseum",
+      color1: "#38bdf8", color2: "#ffffff", shape: "hexagon", pattern: "solid"
+    },
 
-    // MENA (PRO)
-    { id: "flcn", name: "Team Falcons", tag: "FLCN", region: "MENA", division: "PRO", budget: 680000, rep: 94, stars: 0, car: "Fennec", arena: "Salty Shores", color1: "#16a34a", color2: "#ffffff", shape: "shield", pattern: "chevron" },
-    { id: "tm", name: "Twisted Minds", tag: "TM", region: "MENA", division: "PRO", budget: 520000, rep: 87, stars: 0, car: "Octane", arena: "Champions Field", color1: "#dc2626", color2: "#0f172a", shape: "hexagon", pattern: "split" },
-    { id: "r1", name: "Rule One", tag: "R1", region: "MENA", division: "PRO", budget: 500000, rep: 86, stars: 0, car: "Fennec", arena: "Utopia Coliseum", color1: "#f97316", color2: "#111827", shape: "diamond", pattern: "stripe" },
-    // MENA (CHALLENGER)
-    { id: "vis", name: "Vision Esports", tag: "VIS", region: "MENA", division: "CHALLENGER", budget: 310000, rep: 79, stars: 0, car: "Octane", arena: "DFH Stadium", color1: "#06b6d4", color2: "#0f172a", shape: "circle", pattern: "split" }
+    // --- NORTEAMÉRICA (CHALLENGER - 2DA DIVISIÓN) ---
+    {
+      id: "dig_na", name: "Shopify Rebellion", tag: "SR", region: "NA", division: "CHALLENGER",
+      budget: 350000, rep: 80, stars: 0, car: "Fennec", arena: "Beckwith Park",
+      color1: "#84cc16", color2: "#0f172a", shape: "shield", pattern: "sash"
+    },
+    {
+      id: "nrg_ac", name: "Pittsburgh Knights", tag: "PK", region: "NA", division: "CHALLENGER",
+      budget: 310000, rep: 77, stars: 0, car: "Dominus", arena: "Urban Central",
+      color1: "#facc15", color2: "#000000", shape: "diamond", pattern: "split"
+    },
+    {
+      id: "og_na", name: "OG Esports", tag: "OG", region: "NA", division: "CHALLENGER",
+      budget: 325000, rep: 79, stars: 0, car: "Fennec", arena: "Champions Field",
+      color1: "#2563eb", color2: "#f8fafc", shape: "shield", pattern: "stripe"
+    },
+
+    // --- SUDAMÉRICA (PRO) ---
+    {
+      id: "furia", name: "FURIA Esports", tag: "FUR", region: "SAM", division: "PRO",
+      budget: 570000, rep: 91, stars: 0, car: "Fennec", arena: "Champions Field",
+      color1: "#111827", color2: "#f8fafc", shape: "shield", pattern: "sash"
+    },
+    {
+      id: "ts", name: "Team Secret", tag: "TS", region: "SAM", division: "PRO",
+      budget: 460000, rep: 85, stars: 0, car: "Octane", arena: "DFH Stadium",
+      color1: "#0f172a", color2: "#38bdf8", shape: "hexagon", pattern: "split"
+    },
+    {
+      id: "kru", name: "KRÜ Esports", tag: "KRU", region: "SAM", division: "PRO",
+      budget: 470000, rep: 86, stars: 0, car: "Fennec", arena: "Neo Tokyo",
+      color1: "#ec4899", color2: "#111827", shape: "diamond", pattern: "chevron"
+    },
+    {
+      id: "nip", name: "Ninjas in Pyjamas", tag: "NIP", region: "SAM", division: "PRO",
+      budget: 480000, rep: 86, stars: 0, car: "Fennec", arena: "Mannfield (Night)",
+      color1: "#a3e635", color2: "#1e1b4b", shape: "circle", pattern: "sash"
+    },
+
+    // --- SUDAMÉRICA (CHALLENGER - 2DA DIVISIÓN) ---
+    {
+      id: "lev", name: "Leviatán Esports", tag: "LEV", region: "SAM", division: "CHALLENGER",
+      budget: 330000, rep: 80, stars: 0, car: "Fennec", arena: "Urban Central",
+      color1: "#0284c7", color2: "#0f172a", shape: "shield", pattern: "stripe"
+    },
+    {
+      id: "9z", name: "9z Team", tag: "9Z", region: "SAM", division: "CHALLENGER",
+      budget: 320000, rep: 79, stars: 0, car: "Octane", arena: "Beckwith Park",
+      color1: "#7e22ce", color2: "#ffffff", shape: "hexagon", pattern: "solid"
+    },
+    {
+      id: "pain_sam", name: "paiN Gaming", tag: "PAIN", region: "SAM", division: "CHALLENGER",
+      budget: 315000, rep: 78, stars: 0, car: "Fennec", arena: "DFH Stadium",
+      color1: "#dc2626", color2: "#ffffff", shape: "shield", pattern: "split"
+    },
+
+    // --- MENA (PRO) ---
+    {
+      id: "flcn", name: "Team Falcons", tag: "FLCN", region: "MENA", division: "PRO",
+      budget: 700000, rep: 94, stars: 0, car: "Fennec", arena: "Salty Shores",
+      color1: "#16a34a", color2: "#ffffff", shape: "shield", pattern: "chevron"
+    },
+    {
+      id: "tm", name: "Twisted Minds", tag: "TM", region: "MENA", division: "PRO",
+      budget: 540000, rep: 87, stars: 0, car: "Octane", arena: "Champions Field",
+      color1: "#dc2626", color2: "#0f172a", shape: "hexagon", pattern: "split"
+    },
+    {
+      id: "r1", name: "Rule One", tag: "R1", region: "MENA", division: "PRO",
+      budget: 520000, rep: 86, stars: 0, car: "Fennec", arena: "Utopia Coliseum",
+      color1: "#f97316", color2: "#111827", shape: "diamond", pattern: "stripe"
+    },
+
+    // --- MENA (CHALLENGER - 2DA DIVISIÓN) ---
+    {
+      id: "vis", name: "Vision Esports", tag: "VIS", region: "MENA", division: "CHALLENGER",
+      budget: 330000, rep: 79, stars: 0, car: "Octane", arena: "DFH Stadium",
+      color1: "#06b6d4", color2: "#0f172a", shape: "circle", pattern: "split"
+    },
+    {
+      id: "geek_mena", name: "Geekay Esports", tag: "GK", region: "MENA", division: "CHALLENGER",
+      budget: 320000, rep: 78, stars: 0, car: "Fennec", arena: "Neo Tokyo",
+      color1: "#f59e0b", color2: "#090d16", shape: "hexagon", pattern: "chevron"
+    }
   ],
 
+  // 3. JUGADORES OFICIALES CON ROLES, PERSONALIDAD Y ATRIBUTOS
   players: [
     // EU PRO
     { id: "p_vatira", name: "vatira", country: "FR", age: 19, ovr: 95, pot: 98, mec: 96, rot: 95, def: 94, role: "Playmaker", personality: "Líder Nato", contractYears: 3, teamId: "kc", starter: true, value: 490000, goals: 0, assists: 0, saves: 0, matches: 0, streak: 0 },
@@ -81,6 +219,10 @@ const InitialData = {
     { id: "p_crr", name: "crr", country: "ES", age: 20, ovr: 85, pot: 89, mec: 87, rot: 84, def: 83, role: "Playmaker", personality: "Promesa Ambiciosa", contractYears: 2, teamId: "gia_eu", starter: true, value: 235000, goals: 0, assists: 0, saves: 0, matches: 0, streak: 0 },
     { id: "p_dorito", name: "Dorito", country: "ES", age: 20, ovr: 83, pot: 87, mec: 84, rot: 83, def: 82, role: "Third Man", personality: "Trabajador Silencioso", contractYears: 2, teamId: "gia_eu", starter: true, value: 190000, goals: 0, assists: 0, saves: 0, matches: 0, streak: 0 },
 
+    { id: "p_relat", name: "RelatingWave", country: "GB", age: 22, ovr: 83, pot: 85, mec: 82, rot: 84, def: 84, role: "Third Man", personality: "Líder Nato", contractYears: 2, teamId: "end_eu", starter: true, value: 185000, goals: 0, assists: 0, saves: 0, matches: 0, streak: 0 },
+    { id: "p_saizen", name: "saizen", country: "FR", age: 20, ovr: 84, pot: 88, mec: 86, rot: 83, def: 82, role: "Striker", personality: "Promesa Ambiciosa", contractYears: 2, teamId: "end_eu", starter: true, value: 210000, goals: 0, assists: 0, saves: 0, matches: 0, streak: 0 },
+    { id: "p_kash", name: "Kash", country: "GB", age: 21, ovr: 84, pot: 86, mec: 86, rot: 83, def: 82, role: "Playmaker", personality: "Superestrella", contractYears: 2, teamId: "end_eu", starter: true, value: 205000, goals: 0, assists: 0, saves: 0, matches: 0, streak: 0 },
+
     // NA PRO
     { id: "p_beastmode", name: "BeastMode", country: "US", age: 20, ovr: 94, pot: 97, mec: 96, rot: 93, def: 92, role: "Striker", personality: "Superestrella", contractYears: 3, teamId: "g2", starter: true, value: 475000, goals: 0, assists: 0, saves: 0, matches: 0, streak: 0 },
     { id: "p_daniel", name: "Daniel", country: "US", age: 18, ovr: 94, pot: 98, mec: 96, rot: 92, def: 94, role: "Third Man", personality: "Promesa Ambiciosa", contractYears: 3, teamId: "g2", starter: true, value: 480000, goals: 0, assists: 0, saves: 0, matches: 0, streak: 0 },
@@ -115,6 +257,10 @@ const InitialData = {
     { id: "p_sosa", name: "sosa", country: "CA", age: 21, ovr: 82, pot: 85, mec: 82, rot: 83, def: 82, role: "Playmaker", personality: "Trabajador Silencioso", contractYears: 2, teamId: "nrg_ac", starter: true, value: 175000, goals: 0, assists: 0, saves: 0, matches: 0, streak: 0 },
     { id: "p_lion", name: "LionBlaze", country: "US", age: 21, ovr: 82, pot: 85, mec: 81, rot: 82, def: 84, role: "Third Man", personality: "Trabajador Silencioso", contractYears: 2, teamId: "nrg_ac", starter: true, value: 175000, goals: 0, assists: 0, saves: 0, matches: 0, streak: 0 },
 
+    { id: "p_noly_na", name: "JKnaps", country: "CA", age: 24, ovr: 85, pot: 86, mec: 85, rot: 86, def: 84, role: "Striker", personality: "Líder Nato", contractYears: 2, teamId: "og_na", starter: true, value: 225000, goals: 0, assists: 0, saves: 0, matches: 0, streak: 0 },
+    { id: "p_arju", name: "Arju", country: "IT", age: 21, ovr: 83, pot: 86, mec: 84, rot: 83, def: 82, role: "Playmaker", personality: "Trabajador Silencioso", contractYears: 2, teamId: "og_na", starter: true, value: 190000, goals: 0, assists: 0, saves: 0, matches: 0, streak: 0 },
+    { id: "p_toastie", name: "Toastie", country: "US", age: 21, ovr: 83, pot: 86, mec: 83, rot: 83, def: 83, role: "Third Man", personality: "Trabajador Silencioso", contractYears: 2, teamId: "og_na", starter: true, value: 185000, goals: 0, assists: 0, saves: 0, matches: 0, streak: 0 },
+
     // SAM PRO
     { id: "p_yanxnz", name: "yanxnz", country: "BR", age: 20, ovr: 93, pot: 96, mec: 96, rot: 91, def: 91, role: "Striker", personality: "Superestrella", contractYears: 3, teamId: "furia", starter: true, value: 440000, goals: 0, assists: 0, saves: 0, matches: 0, streak: 0 },
     { id: "p_lostt", name: "Lostt", country: "BR", age: 19, ovr: 91, pot: 95, mec: 94, rot: 89, def: 89, role: "Playmaker", personality: "Promesa Ambiciosa", contractYears: 2, teamId: "furia", starter: true, value: 390000, goals: 0, assists: 0, saves: 0, matches: 0, streak: 0 },
@@ -141,6 +287,10 @@ const InitialData = {
     { id: "p_davitrox", name: "Davitrox", country: "CL", age: 19, ovr: 81, pot: 86, mec: 82, rot: 81, def: 80, role: "Playmaker", personality: "Trabajador Silencioso", contractYears: 2, teamId: "9z", starter: true, value: 165000, goals: 0, assists: 0, saves: 0, matches: 0, streak: 0 },
     { id: "p_pekitas", name: "Pekitas", country: "AR", age: 20, ovr: 81, pot: 85, mec: 80, rot: 81, def: 82, role: "Third Man", personality: "Líder Nato", contractYears: 2, teamId: "9z", starter: true, value: 160000, goals: 0, assists: 0, saves: 0, matches: 0, streak: 0 },
 
+    { id: "p_subi", name: "Subi", country: "BR", age: 19, ovr: 83, pot: 88, mec: 85, rot: 82, def: 81, role: "Striker", personality: "Promesa Ambiciosa", contractYears: 2, teamId: "pain_sam", starter: true, value: 190000, goals: 0, assists: 0, saves: 0, matches: 0, streak: 0 },
+    { id: "p_snip_p", name: "Matix", country: "BR", age: 21, ovr: 82, pot: 85, mec: 82, rot: 83, def: 82, role: "Playmaker", personality: "Líder Nato", contractYears: 2, teamId: "pain_sam", starter: true, value: 175000, goals: 0, assists: 0, saves: 0, matches: 0, streak: 0 },
+    { id: "p_royales", name: "Royales", country: "BR", age: 21, ovr: 82, pot: 85, mec: 81, rot: 82, def: 83, role: "Third Man", personality: "Trabajador Silencioso", contractYears: 2, teamId: "pain_sam", starter: true, value: 170000, goals: 0, assists: 0, saves: 0, matches: 0, streak: 0 },
+
     // MENA PRO & CHALLENGER
     { id: "p_trk", name: "trk511", country: "SA", age: 20, ovr: 94, pot: 97, mec: 96, rot: 93, def: 93, role: "Playmaker", personality: "Líder Nato", contractYears: 3, teamId: "flcn", starter: true, value: 475000, goals: 0, assists: 0, saves: 0, matches: 0, streak: 0 },
     { id: "p_rw9", name: "Rw9", country: "SA", age: 18, ovr: 94, pot: 98, mec: 95, rot: 92, def: 96, role: "Third Man", personality: "Superestrella", contractYears: 3, teamId: "flcn", starter: true, value: 485000, goals: 0, assists: 0, saves: 0, matches: 0, streak: 0 },
@@ -158,14 +308,20 @@ const InitialData = {
     { id: "p_venom", name: "Venom", country: "SA", age: 20, ovr: 82, pot: 86, mec: 82, rot: 82, def: 82, role: "Playmaker", personality: "Trabajador Silencioso", contractYears: 2, teamId: "vis", starter: true, value: 175000, goals: 0, assists: 0, saves: 0, matches: 0, streak: 0 },
     { id: "p_b2sel", name: "B2seL", country: "SA", age: 21, ovr: 82, pot: 85, mec: 81, rot: 82, def: 83, role: "Third Man", personality: "Líder Nato", contractYears: 2, teamId: "vis", starter: true, value: 170000, goals: 0, assists: 0, saves: 0, matches: 0, streak: 0 },
 
+    { id: "p_smw", name: "Smw.", country: "SA", age: 19, ovr: 84, pot: 89, mec: 86, rot: 83, def: 82, role: "Striker", personality: "Promesa Ambiciosa", contractYears: 2, teamId: "geek_mena", starter: true, value: 210000, goals: 0, assists: 0, saves: 0, matches: 0, streak: 0 },
+    { id: "p_t7lm", name: "t7lm", country: "SA", age: 20, ovr: 82, pot: 86, mec: 83, rot: 82, def: 82, role: "Playmaker", personality: "Trabajador Silencioso", contractYears: 2, teamId: "geek_mena", starter: true, value: 175000, goals: 0, assists: 0, saves: 0, matches: 0, streak: 0 },
+    { id: "p_mesho", name: "Mesho", country: "SA", age: 21, ovr: 82, pot: 85, mec: 81, rot: 82, def: 83, role: "Third Man", personality: "Trabajador Silencioso", contractYears: 2, teamId: "geek_mena", starter: true, value: 170000, goals: 0, assists: 0, saves: 0, matches: 0, streak: 0 },
+
     // AGENTES LIBRES
     { id: "p_fa1", name: "Extra", country: "FR", age: 22, ovr: 88, pot: 90, mec: 87, rot: 90, def: 88, role: "Playmaker", personality: "Líder Nato", contractYears: 0, teamId: null, starter: false, value: 270000, goals: 0, assists: 0, saves: 0, matches: 0, streak: 0 },
     { id: "p_fa2", name: "Squishy", country: "CA", age: 23, ovr: 86, pot: 87, mec: 86, rot: 87, def: 86, role: "Third Man", personality: "Líder Nato", contractYears: 0, teamId: null, starter: false, value: 230000, goals: 0, assists: 0, saves: 0, matches: 0, streak: 0 },
     { id: "p_fa3", name: "Scrub Killa", country: "GB", age: 21, ovr: 85, pot: 87, mec: 86, rot: 84, def: 85, role: "Striker", personality: "Superestrella", contractYears: 0, teamId: null, starter: false, value: 215000, goals: 0, assists: 0, saves: 0, matches: 0, streak: 0 },
     { id: "p_fa4", name: "Math", country: "BR", age: 21, ovr: 85, pot: 87, mec: 86, rot: 85, def: 84, role: "Playmaker", personality: "Trabajador Silencioso", contractYears: 0, teamId: null, starter: false, value: 210000, goals: 0, assists: 0, saves: 0, matches: 0, streak: 0 },
-    { id: "p_fa5", name: "AyyJayy", country: "US", age: 22, ovr: 88, pot: 90, mec: 91, rot: 86, def: 85, role: "Striker", personality: "Superestrella", contractYears: 0, teamId: null, starter: false, value: 285000, goals: 0, assists: 0, saves: 0, matches: 0, streak: 0 }
+    { id: "p_fa5", name: "AyyJayy", country: "US", age: 22, ovr: 88, pot: 90, mec: 91, rot: 86, def: 85, role: "Striker", personality: "Superestrella", contractYears: 0, teamId: null, starter: false, value: 285000, goals: 0, assists: 0, saves: 0, matches: 0, streak: 0 },
+    { id: "p_fa6", name: "Catalysm", country: "DE", age: 20, ovr: 86, pot: 89, mec: 87, rot: 86, def: 85, role: "Striker", personality: "Promesa Ambiciosa", contractYears: 0, teamId: null, starter: false, value: 235000, goals: 0, assists: 0, saves: 0, matches: 0, streak: 0 }
   ],
 
+  // 4. HEAD COACHES
   coaches: [
     { id: "c_ferra", name: "Ferra", country: "FR", ovr: 95, specialty: "Estratega LAN (+4% en Majors/Mundiales)", teamId: "kc", salary: 110000 },
     { id: "c_satthew", name: "Satthew", country: "US", ovr: 93, specialty: "Química Perfecta (+6 Química base)", teamId: "g2", salary: 95000 },
@@ -173,30 +329,36 @@ const InitialData = {
     { id: "c_eversax", name: "Eversax", country: "BE", ovr: 90, specialty: "Presión Alta (+3% en Series Bo5)", teamId: "gm8", salary: 80000 },
     { id: "c_snip", name: "SnipJz", country: "BR", ovr: 89, specialty: "Formador de Prodigios (+50% progreso juvenil)", teamId: null, salary: 68000 },
     { id: "c_chrome", name: "Chrome", country: "US", ovr: 88, specialty: "Química Perfecta (+6 Química base)", teamId: null, salary: 64000 },
-    { id: "c_virge", name: "Virge", country: "GB", ovr: 89, specialty: "Estratega LAN (+4% en Majors/Mundiales)", teamId: null, salary: 72000 }
+    { id: "c_virge", name: "Virge", country: "GB", ovr: 89, specialty: "Estratega LAN (+4% en Majors/Mundiales)", teamId: null, salary: 72000 },
+    { id: "c_gregan", name: "Gregan", country: "GB", ovr: 87, specialty: "Presión Alta (+3% en Series Bo5)", teamId: null, salary: 60000 }
   ],
 
+  // 5. PATROCINADORES OFICIALES
   sponsors: [
     { id: "sp_redbull", name: "Red Bull Gaming", upfront: 45000, bonusDesc: "+$55,000 extra cada vez que ganás un Major o Mundial.", type: "LAN" },
     { id: "sp_nvidia", name: "NVIDIA GeForce RTX", upfront: 55000, bonusDesc: "+$20,000 por serie ganada si tu Química supera 88%.", type: "CHEM" },
-    { id: "sp_hyperx", name: "HyperX Esports", upfront: 35000, bonusDesc: "+$30,000 extra cada vez que ganás cualquier torneo.", type: "TITLE" }
+    { id: "sp_hyperx", name: "HyperX Esports", upfront: 35000, bonusDesc: "+$30,000 extra cada vez que ganás cualquier torneo.", type: "TITLE" },
+    { id: "sp_monster", name: "Monster Energy", upfront: 40000, bonusDesc: "+$15,000 por victoria en Playoffs o Finales Regionales.", type: "PLAYOFF" }
   ],
 
+  // 6. RED DE OJEADORES
   scouts: [
     { id: "sc_sam", name: "Ojeador Sudamérica (AR/BR/CL)", cost: 35000, level: 1, desc: "+25% chance de detectar talentos SSL/GC3 en SAM" },
     { id: "sc_eu", name: "Ojeador Europa (FR/GB/ES)", cost: 45000, level: 2, desc: "+30% chance de detectar talentos europeos" },
     { id: "sc_global", name: "Red Global Elite (NA & MENA)", cost: 65000, level: 3, desc: "Aumenta el potencial máximo de tus nuevos juveniles" }
   ],
 
+  // 7. FEDERACIONES PARA SELECCIÓN NACIONAL FIFAe
   federations: [
-    { code: "AR", name: "Selección Argentina (AFA Esports)", minRep: 85 },
-    { code: "CL", name: "Selección de Chile (La Roja)", minRep: 85 },
+    { code: "AR", name: "Selección Argentina (AFA Esports)", minRep: 84 },
+    { code: "CL", name: "Selección de Chile (La Roja)", minRep: 84 },
     { code: "BR", name: "Selección de Brasil (CBF Esports)", minRep: 88 },
     { code: "FR", name: "Selección de Francia (FFF Esports)", minRep: 92 },
     { code: "US", name: "Selección de Estados Unidos", minRep: 90 },
     { code: "SA", name: "Selección de Arabia Saudita", minRep: 91 }
   ],
 
+  // 8. LIGAS NACIONALES (DESTINO DE CESIONES JUVENILES)
   nationalLeagues: [
     { id: "lg_ar", name: "Liga Argentina de Rocket League", country: "AR", clubs: ["River Plate Gaming", "Boca Juniors Gaming", "9z Academy", "Leviatán B", "Furious Gaming", "Malvinas Gaming"] },
     { id: "lg_cl", name: "Liga Chilena RLCS", country: "CL", clubs: ["Colo-Colo Esports", "Universidad de Chile", "KRÜ Academy", "Santiago Wanderers", "Australs", "Cruzados"] },
@@ -206,6 +368,7 @@ const InitialData = {
     { id: "lg_mena", name: "Saudi eLeague", country: "SA", clubs: ["Falcons Academy", "Al-Nassr Esports", "Al-Hilal Esports", "Twisted B", "Geekay", "01 Esports"] }
   ],
 
+  // 9. CALENDARIO ANUAL DE COMPETICIONES
   seasonSchedule: [
     { compId: "rlcs_regional", compName: "RLCS Open Regional #1", roundName: "Fase Suiza — Ronda 1", stageType: "SWISS", format: "Bo5", prize: 22000, points: 12, isFinal: false },
     { compId: "rlcs_regional", compName: "RLCS Open Regional #1", roundName: "Fase Suiza — Ronda 2", stageType: "SWISS", format: "Bo5", prize: 25000, points: 14, isFinal: false },
@@ -232,6 +395,7 @@ const InitialData = {
     { compId: "rlcs_worlds", compName: "RLCS World Championship", roundName: "GRAN FINAL MUNDIAL RLCS", stageType: "GF", format: "Bo7", prize: 300000, points: 130, isFinal: true }
   ],
 
+  // 10. PLANTILLAS Y NOMBRES DE CANTERA
   youthTemplates: [
     { rank: "SSL", code: "SSL", age: 14, ovr: 76, potMin: 94, potMax: 99 },
     { rank: "GC3", code: "GC3", age: 15, ovr: 73, potMin: 90, potMax: 95 },
@@ -239,7 +403,12 @@ const InitialData = {
     { rank: "C3",  code: "C3",  age: 14, ovr: 65, potMin: 81, potMax: 87 }
   ],
 
-  youthArchetypes: ["Freestyler Mecánico", "Cerebro Táctico", "Muralla Defensiva", "Especialista 1v1"],
+  youthArchetypes: [
+    "Freestyler Mecánico",
+    "Cerebro Táctico",
+    "Muralla Defensiva",
+    "Especialista 1v1"
+  ],
 
   newgenPrefixes: [
     "Kairo", "Zentox", "Vortex", "Nyx", "Luka", "Santi", "Tomi", "Thiago",
