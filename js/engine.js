@@ -1,43 +1,21 @@
 let GameState = {
-  season: 2026,
-  scheduleIndex: 0,
+  season: "2026-27",
   userTeamId: null,
+  selectedRegionTab: "SAM",
+  selectedCompView: "rlcs_regional",
+  metaPatch: InitialData.metaPatches[0],
   manager: {
     name: "Tomy",
     country: "AR",
     specialty: "ACADEMY",
-    rep: 72,
+    rep: 75,
     confidence: 80,
     nationalTeamCode: null,
     history: []
   },
-  facilities: {
-    gamingHouse: 1,
-    academy: 1,
-    marketing: 1
-  },
-  tacticalBoard: {
-    style: "balanced",
-    boostPriority: "balanced",
-    strikerRole: "All-Round",
-    playmakerRole: "Infield Passer",
-    thirdManRole: "Goal-Line Anchor"
-  },
+  facilities: { gamingHouse: 1, academy: 1, marketing: 1 },
+  tacticalBoard: { style: "balanced", boostPriority: "balanced" },
   hiredScouts: [],
-  scoutReports: [],
-  metaPatch: "Parche 2.40: Meta Aéreo y Flip Resets (+Bono a Strikers)",
-  teams: [],
-  players: [],
-  coaches: [],
-  academyProspects: [],
-  customNameQueue: [],
-  nationalTables: {},
-  swissStandings: [],
-  currentBracket: { qf: [], sf: [], gf: [] },
-  trophiesWon: [],
-  championsHistory: [],
-  awardsHistory: [],
-  hallOfFame: [],
   records: {
     topScorerSeason: { name: "-", val: 0 },
     biggestSale: { name: "-", val: 0 },
@@ -45,20 +23,35 @@ let GameState = {
     currentStreak: 0
   },
   headToHead: {},
-  careerStats: { wins: 0, losses: 0, youthSales: 0 },
+  hallOfFame: [],
+  teams: [],
+  players: [],
+  coaches: [],
+  academyProspects: [],
+  nationalTables: {},
+  scheduleIndex: 0,
+  currentOpponentId: null,
+  swissStandings: [],
+  currentBracket: { compName: "", qf: [], sf: [], gf: [] },
   activeSponsor: null,
-  bootcampActive: false,
   weeklyPrepDone: false,
+  bootcampActive: false,
   prepBonus: { ovr: 0, chem: 0 },
   incomingOffer: null,
+  lockerEvent: null,
   pendingJobOffer: null,
   pendingNationalOffer: null,
-  lockerEvent: null,
+  trophiesWon: [],
+  championsHistory: [],
+  awardsHistory: [],
+  careerStats: { wins: 0, losses: 0, youthSales: 0 },
   news: [],
-  currentOpponentId: null,
-  selectedCompView: "rlcs_regional",
-  selectedRegionTab: "SAM"
+  customNameQueue: []
 };
+
+let SelectedSetupTeamId = null;
+let ActiveNegotiationPlayerId = null;
+let CombinePool = [];
 
 let LiveMatch = {
   active: false,
@@ -80,145 +73,78 @@ let LiveMatch = {
   simState: null
 };
 
-let ActiveNegotiationPlayerId = null;
-let CombinePool = [];
-
 // INICIALIZACIÓN
-window.onload = () => {
-  document.getElementById("hero-logo").innerHTML = Graphics.renderTrophy("rlcs_worlds", 68);
-  updateCustomCrestPreview();
+window.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("hero-trophy-slot").innerHTML = Graphics.renderTrophy("rlcs_worlds", 68);
   renderSetupTeams();
-  if (
-    localStorage.getItem("rl_career_save_v7") ||
-    localStorage.getItem("rl_career_save_v6") ||
-    localStorage.getItem("rl_career_save_v5")
-  ) {
-    document.getElementById("btn-continue-save").style.display = "inline-block";
-  }
-};
+  updateCustomCrestPreview();
+  checkExistingSave();
+});
 
-function switchSetupTab(tab, btn) {
-  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-  document.querySelectorAll(".setup-panel").forEach(p => p.classList.remove("active"));
-  btn.classList.add("active");
-  document.getElementById("setup-" + tab).classList.add("active");
+function checkExistingSave() {
+  const hasSave =
+    localStorage.getItem("rl_career_save_v8") ||
+    localStorage.getItem("rl_career_save_v7") ||
+    localStorage.getItem("rl_career_save_v6");
+  if (hasSave) {
+    document.getElementById("continue-save-box").classList.remove("hidden");
+  }
+}
+
+function setSetupMode(mode) {
+  document.getElementById("btn-mode-existing").classList.toggle("active", mode === "existing");
+  document.getElementById("btn-mode-create").classList.toggle("active", mode === "create");
+  document.getElementById("panel-existing").classList.toggle("active", mode === "existing");
+  document.getElementById("panel-create").classList.toggle("active", mode === "create");
 }
 
 function renderSetupTeams() {
-  const filter = document.getElementById("setup-region-filter").value;
-  const grid = document.getElementById("setup-team-grid");
-  grid.innerHTML = "";
+  const filter = document.getElementById("region-filter").value;
+  const grid = document.getElementById("teams-grid");
+  const filtered = InitialData.teams.filter(t => filter === "ALL" || t.region === filter);
 
-  InitialData.teams
-    .filter(t => filter === "ALL" || t.region === filter)
-    .forEach(team => {
-      const roster = InitialData.players.filter(p => p.teamId === team.id);
-      const avgOvr = Math.round(roster.reduce((a, b) => a + b.ovr, 0) / (roster.length || 1));
-      const card = document.createElement("div");
-      card.className = "team-select-card";
-      card.innerHTML = `
+  grid.innerHTML = filtered.map(team => {
+    const roster = InitialData.players.filter(p => p.teamId === team.id && p.starter);
+    const ovr = roster.length ? Math.round(roster.reduce((s, p) => s + p.ovr, 0) / roster.length) : 80;
+    const isSel = SelectedSetupTeamId === team.id;
+
+    return `
+      <div class="team-select-card ${isSel ? "selected" : ""}" onclick="selectSetupTeam('${team.id}')">
         ${Graphics.renderCrest(team, 64)}
         <h3>${team.name}</h3>
-        <span class="badge">${team.region} • ${team.division} • OVR ${avgOvr}</span>
-        <div class="roster-mini">${roster.map(p => p.name).join(" • ")}</div>
-      `;
-      card.onclick = () => startCareer(team.id);
-      grid.appendChild(card);
-    });
+        <div class="meta">${team.region} • ${team.division} • OVR ${ovr} • ${team.car}</div>
+        <div class="roster-preview">${roster.map(p => p.name).join(" • ")}</div>
+      </div>
+    `;
+  }).join("");
+}
+
+function selectSetupTeam(teamId) {
+  SelectedSetupTeamId = teamId;
+  renderSetupTeams();
+  document.getElementById("btn-start-existing").disabled = false;
 }
 
 function updateCustomCrestPreview() {
-  const mockTeam = {
-    tag: document.getElementById("custom-team-tag").value || "ORG",
-    color1: document.getElementById("custom-color-1").value,
-    color2: document.getElementById("custom-color-2").value,
-    shape: document.getElementById("custom-crest-shape").value,
-    pattern: document.getElementById("custom-crest-pattern").value,
-    logoUrl: document.getElementById("custom-logo-url").value,
-    stars: 0
-  };
-  document.getElementById("custom-crest-preview").innerHTML = Graphics.renderCrest(mockTeam, 88);
-}
-
-function readManagerSetup() {
-  GameState.manager.name = document.getElementById("mgr-name-input").value.trim() || "Tomy";
-  GameState.manager.country = document.getElementById("mgr-country-input").value;
-  GameState.manager.specialty = document.getElementById("mgr-spec-input").value;
-}
-
-function startWithCustomTeam() {
-  initBaseState();
-  readManagerSetup();
-
-  const name = document.getElementById("custom-team-name").value.trim() || "La Plata Esports";
-  const tag = document.getElementById("custom-team-tag").value.trim().toUpperCase() || "LPE";
-  const region = document.getElementById("custom-team-region").value;
+  const name = document.getElementById("custom-team-name").value.trim() || "Tu Nuevo Club";
+  const tag = (document.getElementById("custom-team-tag").value.trim() || "TNC").toUpperCase();
   const shape = document.getElementById("custom-crest-shape").value;
   const pattern = document.getElementById("custom-crest-pattern").value;
   const color1 = document.getElementById("custom-color-1").value;
   const color2 = document.getElementById("custom-color-2").value;
-  const car = document.getElementById("custom-car-body").value;
   const logoUrl = document.getElementById("custom-logo-url").value.trim();
 
-  const customTeam = {
-    id: "custom_user",
-    name, tag, region, division: "CHALLENGER", rep: 68, stars: 0, car, arena: "Champions Field",
-    color1, color2, shape, pattern, logoUrl,
-    budget: 90000,
-    points: 0
-  };
-
-  GameState.teams.push(customTeam);
-  GameState.userTeamId = "custom_user";
-  GameState.selectedRegionTab = region;
-  GameState.manager.rep = 68;
-  recordManagerClubJoin(customTeam);
-
-  const regionCountry = { SAM: "AR", EU: "FR", NA: "US", MENA: "SA" }[region] || "AR";
-  const roles = ["Striker", "Playmaker", "Third Man"];
-  const personalities = ["Promesa Ambiciosa", "Trabajador Silencioso", "Líder Nato"];
-  for (let i = 0; i < 3; i++) {
-    const baseOvr = 73 + i;
-    GameState.players.push({
-      id: "u_init_" + i,
-      name: generateUniqueName(),
-      country: regionCountry,
-      age: 15 + i,
-      ovr: baseOvr,
-      pot: 84 + i * 2,
-      mec: baseOvr + 1,
-      rot: baseOvr,
-      def: baseOvr - 1,
-      role: roles[i],
-      personality: personalities[i],
-      contractYears: 2,
-      teamId: "custom_user",
-      starter: true,
-      stamina: 100,
-      value: 45000 + i * 8000,
-      goals: 0, assists: 0, saves: 0, matches: 0,
-      careerGoals: 0, careerAssists: 0, careerSaves: 0, careerTitles: 0,
-      clubHistory: [name],
-      streak: 0
-    });
-  }
-
-  runAIManagement();
-  addNews(`🚀 ¡${name} (${tag}) inicia su camino desde abajo en la División Challenger de ${region}!`, "prodigy");
-  launchGameUI();
+  const mock = { id: "preview", name, tag, shape, pattern, color1, color2, logoUrl, stars: 0 };
+  document.getElementById("custom-crest-preview").innerHTML = Graphics.renderCrest(mock, 68);
+  document.getElementById("preview-club-title").textContent = `${name} (${tag})`;
 }
 
-function startCareer(teamId) {
-  initBaseState();
-  readManagerSetup();
-  GameState.userTeamId = teamId;
-  const userTeam = getUserTeam();
-  GameState.selectedRegionTab = userTeam.region;
-  GameState.manager.rep = Math.max(72, userTeam.rep - 4);
-  recordManagerClubJoin(userTeam);
-  runAIManagement();
-  addNews(`👔 ${GameState.manager.name} asumió como Head Manager de ${userTeam.name} (${userTeam.division}).`);
-  launchGameUI();
+function getManagerFormData() {
+  return {
+    name: (document.getElementById("mgr-name-input").value.trim() || "Tomy"),
+    country: document.getElementById("mgr-country-select").value,
+    specialty: document.getElementById("mgr-specialty-select").value
+  };
 }
 
 function recordManagerClubJoin(team) {
@@ -232,521 +158,576 @@ function recordManagerClubJoin(team) {
   });
 }
 
-function initBaseState() {
-  GameState.season = 2026;
-  GameState.scheduleIndex = 0;
-  GameState.teams = JSON.parse(JSON.stringify(InitialData.teams));
-  GameState.players = JSON.parse(JSON.stringify(InitialData.players)).map(p => ({
-    ...p,
-    matches: p.matches || 0,
-    careerGoals: p.careerGoals || 0,
-    careerAssists: p.careerAssists || 0,
-    careerSaves: p.careerSaves || 0,
-    careerTitles: p.careerTitles || 0,
-    clubHistory: p.teamId ? [InitialData.teams.find(t => t.id === p.teamId)?.name || "Club"] : ["Agente Libre"]
-  }));
-  GameState.coaches = JSON.parse(JSON.stringify(InitialData.coaches));
-  GameState.academyProspects = [];
-  GameState.customNameQueue = [];
-  GameState.hiredScouts = [];
-  GameState.scoutReports = [];
-  GameState.trophiesWon = [];
-  GameState.championsHistory = [];
-  GameState.awardsHistory = [];
-  GameState.hallOfFame = [];
-  GameState.headToHead = {};
-  GameState.careerStats = { wins: 0, losses: 0, youthSales: 0 };
-  GameState.facilities = { gamingHouse: 1, academy: 1, marketing: 1 };
-  GameState.tacticalBoard = {
-    style: "balanced",
-    boostPriority: "balanced",
-    strikerRole: "All-Round",
-    playmakerRole: "Infield Passer",
-    thirdManRole: "Goal-Line Anchor"
-  };
-  GameState.metaPatch = InitialData.metaPatches[0];
-  GameState.activeSponsor = null;
-  GameState.bootcampActive = false;
-  GameState.weeklyPrepDone = false;
-  GameState.prepBonus = { ovr: 0, chem: 0 };
-  GameState.incomingOffer = null;
-  GameState.pendingJobOffer = null;
-  GameState.pendingNationalOffer = null;
-  GameState.lockerEvent = null;
-  GameState.news = [];
-  buildNationalTables();
-  spawnInitialProspects();
+function seedInitialAcademy() {
+  const userTeam = getUserTeam();
+  const otherClubs = GameState.teams.filter(t => t.id !== userTeam.id);
+
+  const startersYouth = [
+    { id: "acad_init_1", name: "ValenRL", country: "AR", age: 14, rank: "SSL", archetype: "Freestyler Mecánico", ovr: 76, pot: 96, ownerTeamId: userTeam.id, isUserAcademy: true, loanLeagueId: null, loanClub: null, loanGoals: 0, loanAssists: 0 },
+    { id: "acad_init_2", name: "MateoFlip", country: "CL", age: 15, rank: "GC3", archetype: "Cerebro Táctico", ovr: 73, pot: 92, ownerTeamId: userTeam.id, isUserAcademy: true, loanLeagueId: null, loanClub: null, loanGoals: 0, loanAssists: 0 },
+    { id: "acad_init_3", name: "LukaWall", country: "BR", age: 15, rank: "GC2", archetype: "Muralla Defensiva", ovr: 71, pot: 90, ownerTeamId: userTeam.id, isUserAcademy: true, loanLeagueId: null, loanClub: null, loanGoals: 0, loanAssists: 0 }
+  ];
+
+  const worldYouth = [
+    { id: "acad_w_1", name: "NoaZen", country: "FR", age: 14, rank: "SSL", archetype: "Freestyler Mecánico", ovr: 77, pot: 97, ownerTeamId: otherClubs[0]?.id || userTeam.id, isUserAcademy: false, loanLeagueId: null, loanClub: null, loanGoals: 0, loanAssists: 0 },
+    { id: "acad_w_2", name: "TariqPro", country: "SA", age: 15, rank: "GC3", archetype: "Especialista 1v1", ovr: 74, pot: 94, ownerTeamId: otherClubs[1]?.id || userTeam.id, isUserAcademy: false, loanLeagueId: null, loanClub: null, loanGoals: 0, loanAssists: 0 }
+  ];
+
+  GameState.academyProspects = [...startersYouth, ...worldYouth];
 }
 
 function buildNationalTables() {
   GameState.nationalTables = {};
-  InitialData.nationalLeagues.forEach(league => {
-    GameState.nationalTables[league.id] = league.clubs.map(club => ({
-      club, pj: 0, pg: 0, pp: 0, dg: 0, pts: 0
+  InitialData.nationalLeagues.forEach(lg => {
+    GameState.nationalTables[lg.id] = lg.clubs.map((club, idx) => ({
+      club,
+      pj: 6,
+      pg: Math.max(1, 5 - Math.floor(idx / 2)),
+      pp: Math.min(5, 1 + Math.floor(idx / 2)),
+      dg: (5 - idx) * 2,
+      pts: Math.max(3, (6 - idx) * 3)
     }));
   });
 }
 
-function spawnInitialProspects() {
-  const starters = [
-    { name: "TomyRL", country: "AR", tpl: "GC2_13", arch: "Cerebro Táctico", isMine: true },
-    { name: "Kirox", country: "CL", tpl: "C3_12", arch: "Diamante en Bruto", isMine: true },
-    { name: "Zynx", country: "FR", tpl: "GC3_14", arch: "Freestyler", isMine: false, clubId: "kc" },
-    { name: "Dante", country: "BR", tpl: "GC1_13", arch: "Ranked Demon 1v1", isMine: false, clubId: "fur" }
-  ];
-  starters.forEach((s, idx) => {
-    const t = InitialData.youthTemplates.find(x => x.code === s.tpl) || InitialData.youthTemplates[0];
-    const pot = Math.floor(Math.random() * (t.potMax - t.potMin + 1)) + t.potMin;
-    GameState.academyProspects.push({
-      id: "acad_" + Date.now() + "_" + idx,
-      name: s.name, country: s.country, age: t.age, rank: t.rank, archetype: s.arch,
-      ovr: t.ovr, pot, ownerTeamId: s.isMine ? null : s.clubId, isUserAcademy: s.isMine,
-      loanLeagueId: null, loanClub: null, loanGoals: 0, loanAssists: 0
-    });
-  });
+function normalizePlayerCareerFields(p) {
+  const club = getTeamById(p.teamId);
+  return {
+    ...p,
+    role: p.role || "Striker",
+    personality: p.personality || "Equilibrado",
+    contractYears: p.contractYears ?? 2,
+    stamina: p.stamina ?? 100,
+    matches: p.matches ?? 0,
+    careerGoals: p.careerGoals ?? (p.goals || 0),
+    careerAssists: p.careerAssists ?? (p.assists || 0),
+    careerSaves: p.careerSaves ?? (p.saves || 0),
+    careerTitles: p.careerTitles ?? 0,
+    clubHistory: p.clubHistory || (club ? [club.name] : ["Agente Libre"]),
+    streak: p.streak ?? 0
+  };
 }
 
-function launchGameUI() {
-  GameState.academyProspects.forEach(p => {
-    if (p.isUserAcademy) p.ownerTeamId = GameState.userTeamId;
-  });
+function startCareerExisting() {
+  if (!SelectedSetupTeamId) return;
+  const mgrForm = getManagerFormData();
+  const chosenTeam = InitialData.teams.find(t => t.id === SelectedSetupTeamId);
+
+  GameState = {
+    ...GameState,
+    season: "2026-27",
+    userTeamId: chosenTeam.id,
+    selectedRegionTab: chosenTeam.region,
+    metaPatch: InitialData.metaPatches[0],
+    manager: { ...mgrForm, rep: 78, confidence: 82, nationalTeamCode: null, history: [] },
+    facilities: { gamingHouse: 1, academy: 1, marketing: 1 },
+    tacticalBoard: { style: "balanced", boostPriority: "balanced" },
+    hiredScouts: [],
+    records: { topScorerSeason: { name: "-", val: 0 }, biggestSale: { name: "-", val: 0 }, bestStreak: 0, currentStreak: 0 },
+    headToHead: {},
+    hallOfFame: [],
+    teams: InitialData.teams.map(t => ({ ...t, points: 0, stars: t.stars || 0 })),
+    players: InitialData.players.map(p => ({ ...p })),
+    coaches: InitialData.coaches.map(c => ({ ...c })),
+    scheduleIndex: 0,
+    weeklyPrepDone: false,
+    bootcampActive: false,
+    prepBonus: { ovr: 0, chem: 0 },
+    incomingOffer: null,
+    lockerEvent: null,
+    pendingJobOffer: null,
+    pendingNationalOffer: null,
+    trophiesWon: [],
+    championsHistory: [],
+    awardsHistory: [],
+    careerStats: { wins: 0, losses: 0, youthSales: 0 },
+    news: []
+  };
+
+  GameState.players = GameState.players.map(normalizePlayerCareerFields);
+  recordManagerClubJoin(chosenTeam);
+  seedInitialAcademy();
+  buildNationalTables();
   initSwissForCurrentEvent();
   generateTournamentBracket();
   pickNextOpponent();
+  addNews(`¡Arranca tu carrera como DT de ${chosenTeam.name} (${chosenTeam.region} • ${chosenTeam.division})!`, "prodigy");
+  launchGameScreen();
+}
+
+function startCareerCustom() {
+  const mgrForm = getManagerFormData();
+  const name = document.getElementById("custom-team-name").value.trim() || "La Plata Esports";
+  const tag = (document.getElementById("custom-team-tag").value.trim() || "LPE").toUpperCase();
+  const region = document.getElementById("custom-team-region").value;
+  const shape = document.getElementById("custom-crest-shape").value;
+  const pattern = document.getElementById("custom-crest-pattern").value;
+  const color1 = document.getElementById("custom-color-1").value;
+  const color2 = document.getElementById("custom-color-2").value;
+  const logoUrl = document.getElementById("custom-logo-url").value.trim();
+  const car = document.getElementById("custom-car").value;
+  const budget = parseInt(document.getElementById("custom-budget").value) || 320000;
+
+  const customTeamId = "custom_" + Date.now();
+  const newTeam = {
+    id: customTeamId, name, tag, region, division: "CHALLENGER",
+    budget, rep: 72, stars: 0, car, arena: "Arena Fundacional",
+    color1, color2, shape, pattern, logoUrl, points: 0
+  };
+
+  const regionCountry = { SAM: "AR", EU: "FR", NA: "US", MENA: "SA" }[region] || "AR";
+  const rookies = [
+    { id: "rk_1_" + Date.now(), name: generateUniqueName(), country: regionCountry, age: 16, ovr: 79, pot: 92, mec: 81, rot: 78, def: 77, role: "Striker", personality: "Promesa Ambiciosa", contractYears: 3, teamId: customTeamId, starter: true, stamina: 100, value: 140000, goals: 0, assists: 0, saves: 0, matches: 0, careerGoals: 0, careerAssists: 0, careerSaves: 0, careerTitles: 0, clubHistory: [name], streak: 0 },
+    { id: "rk_2_" + Date.now(), name: generateUniqueName(), country: regionCountry, age: 17, ovr: 78, pot: 89, mec: 78, rot: 80, def: 77, role: "Playmaker", personality: "Líder Nato", contractYears: 3, teamId: customTeamId, starter: true, stamina: 100, value: 125000, goals: 0, assists: 0, saves: 0, matches: 0, careerGoals: 0, careerAssists: 0, careerSaves: 0, careerTitles: 0, clubHistory: [name], streak: 0 },
+    { id: "rk_3_" + Date.now(), name: generateUniqueName(), country: regionCountry, age: 18, ovr: 78, pot: 88, mec: 76, rot: 79, def: 81, role: "Third Man", personality: "Trabajador Silencioso", contractYears: 3, teamId: customTeamId, starter: true, stamina: 100, value: 125000, goals: 0, assists: 0, saves: 0, matches: 0, careerGoals: 0, careerAssists: 0, careerSaves: 0, careerTitles: 0, clubHistory: [name], streak: 0 }
+  ];
+
+  GameState = {
+    ...GameState,
+    season: "2026-27",
+    userTeamId: customTeamId,
+    selectedRegionTab: region,
+    metaPatch: InitialData.metaPatches[0],
+    manager: { ...mgrForm, rep: 72, confidence: 80, nationalTeamCode: null, history: [] },
+    facilities: { gamingHouse: 1, academy: 1, marketing: 1 },
+    tacticalBoard: { style: "balanced", boostPriority: "balanced" },
+    hiredScouts: [],
+    records: { topScorerSeason: { name: "-", val: 0 }, biggestSale: { name: "-", val: 0 }, bestStreak: 0, currentStreak: 0 },
+    headToHead: {},
+    hallOfFame: [],
+    teams: [...InitialData.teams.map(t => ({ ...t, points: 0, stars: t.stars || 0 })), newTeam],
+    players: [...InitialData.players.map(normalizePlayerCareerFields), ...rookies],
+    coaches: InitialData.coaches.map(c => ({ ...c })),
+    scheduleIndex: 0,
+    weeklyPrepDone: false,
+    bootcampActive: false,
+    prepBonus: { ovr: 0, chem: 0 },
+    incomingOffer: null,
+    lockerEvent: null,
+    pendingJobOffer: null,
+    pendingNationalOffer: null,
+    trophiesWon: [],
+    championsHistory: [],
+    awardsHistory: [],
+    careerStats: { wins: 0, losses: 0, youthSales: 0 },
+    news: []
+  };
+
+  recordManagerClubJoin(newTeam);
+  seedInitialAcademy();
+  buildNationalTables();
+  initSwissForCurrentEvent();
+  generateTournamentBracket();
+  pickNextOpponent();
+  addNews(`¡Fundaste ${name} (${tag}) en RLCS Challenger (${region})! El ascenso a Pro es tu meta.`, "prodigy");
+  launchGameScreen();
+}
+
+function launchGameScreen() {
   document.getElementById("setup-screen").classList.remove("active");
   document.getElementById("game-screen").classList.add("active");
   refreshAllUI();
   saveGame(false);
 }
 
-// HELPERS Y QUÍMICA AVANZADA
+// NAVEGACIÓN Y HELPERS
+function switchTab(tabId, btnEl) {
+  document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  document.getElementById(tabId).classList.add("active");
+  if (btnEl) btnEl.classList.add("active");
+
+  if (tabId === "tab-competitions") renderCompetitionView();
+  if (tabId === "tab-squad") renderSquadAndCoach();
+  if (tabId === "tab-academy") renderAcademy();
+  if (tabId === "tab-market") renderMarket();
+  if (tabId === "tab-national") renderNationalTab();
+  if (tabId === "tab-career") renderCareerTab();
+  if (tabId === "tab-awards") renderAwardsAndTrophies();
+  if (tabId === "tab-editor") populateEditorTeams();
+}
+
 function getUserTeam() { return GameState.teams.find(t => t.id === GameState.userTeamId); }
 function getTeamById(id) { return GameState.teams.find(t => t.id === id); }
-function getTeamRoster(teamId, onlyStarters = false) {
-  return GameState.players.filter(p => p.teamId === teamId && (!onlyStarters || p.starter));
+function getTeamRoster(teamId, startersOnly = false) {
+  const list = GameState.players.filter(p => p.teamId === teamId);
+  return startersOnly ? list.filter(p => p.starter).slice(0, 3) : list;
 }
 function getTeamCoach(teamId) { return GameState.coaches.find(c => c.teamId === teamId); }
 
-function getTeamChemistry(teamId) {
-  const starters = getTeamRoster(teamId, true);
-  if (starters.length < 3) return 70;
-  let chem = 78;
-
-  const rolesSet = new Set(starters.map(p => p.role || "Striker"));
-  if (rolesSet.size === 3) chem += 12;
-  else if (rolesSet.size === 2) chem += 5;
-
-  const countries = starters.map(p => p.country);
-  if (countries[0] === countries[1] && countries[1] === countries[2]) chem += 7;
-  else if (new Set(countries).size === 2) chem += 3;
-
-  const superstars = starters.filter(p => p.personality === "Superestrella").length;
-  const leaders = starters.filter(p => p.personality === "Líder Nato").length;
-  if (superstars >= 3 && leaders === 0) chem -= 10;
-  if (leaders >= 1) chem += 4;
-
-  if (teamId === GameState.userTeamId) {
-    if (GameState.bootcampActive) chem += 3;
-    chem += (GameState.prepBonus?.chem || 0);
-  }
-  return Math.max(45, Math.min(100, chem));
-}
-
 function getTeamOvr(teamId) {
   const starters = getTeamRoster(teamId, true);
-  if (starters.length === 0) return 70;
-
-  const base = starters.reduce((sum, p) => {
-    const stam = p.stamina ?? 100;
-    const tiltPenalty = stam < 50 ? -4 : (stam < 70 ? -2 : 0);
-    const fireBonus = p.streak >= 3 ? 2 : 0;
-    return sum + p.ovr + fireBonus + tiltPenalty;
+  if (!starters.length) return 75;
+  let avg = starters.reduce((s, p) => {
+    const stamFactor = ((p.stamina ?? 100) < 45) ? -2 : 0;
+    const streakFactor = (p.streak >= 3) ? 2 : 0;
+    return s + p.ovr + stamFactor + streakFactor;
   }, 0) / starters.length;
 
-  const chemBonus = (getTeamChemistry(teamId) - 80) * 0.1;
-  const coach = getTeamCoach(teamId);
-  const coachBonus = coach ? (coach.ovr - 80) * 0.15 : 0;
-
-  let userBonus = 0;
   if (teamId === GameState.userTeamId) {
-    if (GameState.bootcampActive) userBonus += 2;
-    userBonus += (GameState.prepBonus?.ovr || 0);
-    userBonus += ((GameState.facilities?.gamingHouse || 1) - 1) * 0.6;
+    avg += (GameState.prepBonus?.ovr || 0);
+    if (GameState.bootcampActive) avg += 1.5;
+    if (GameState.manager.specialty === "TACTICIAN") avg += 2;
+    avg += ((GameState.facilities?.gamingHouse || 1) - 1) * 0.6;
   }
-  return Math.round(base + chemBonus + coachBonus + userBonus);
+  return Math.min(99, Math.max(65, Math.round(avg)));
 }
 
-function addNews(text, type = "normal") {
-  GameState.news.unshift({ text, type, season: GameState.season });
-  if (GameState.news.length > 60) GameState.news.pop();
+function getTeamChemistry(teamId) {
+  const starters = getTeamRoster(teamId, true);
+  if (starters.length < 2) return 75;
+  let chem = 78;
+  const countries = starters.map(p => p.country);
+  if (new Set(countries).size === 1) chem += 8;
+  else if (new Set(countries).size === 2) chem += 4;
+
+  const roles = starters.map(p => p.role);
+  if (new Set(roles).size === 3) chem += 5;
+
+  const coach = getTeamCoach(teamId);
+  if (coach && coach.specialty.includes("Química")) chem += 6;
+  if (teamId === GameState.userTeamId) chem += (GameState.prepBonus?.chem || 0);
+
+  return Math.min(100, Math.max(55, chem));
 }
 
-// NAVEGACIÓN
-function switchGameTab(tabId) {
-  document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
-  document.querySelectorAll(".game-tab").forEach(t => t.classList.remove("active"));
-  document.querySelector(`.nav-btn[data-tab="${tabId}"]`).classList.add("active");
-  document.getElementById("tab-" + tabId).classList.add("active");
-  refreshAllUI();
+function addNews(text, type = "info") {
+  GameState.news.unshift({ text, type, time: `Temp. ${GameState.season}` });
+  if (GameState.news.length > 45) GameState.news.pop();
 }
 
-function refreshAllUI() {
-  const team = getUserTeam();
-  if (!team) return;
-  const stage = InitialData.seasonSchedule[GameState.scheduleIndex];
-  const ovr = getTeamOvr(team.id);
-  const chem = getTeamChemistry(team.id);
-
-  document.getElementById("top-club-crest").innerHTML = Graphics.renderCrest(team, 46);
-  document.getElementById("top-club-name").textContent = team.name;
-  document.getElementById("top-club-meta").textContent = `${team.region} (${team.division}) • OVR ${ovr} • Química ${chem}%`;
-  document.getElementById("top-season").textContent = `${GameState.season} • ${(GameState.metaPatch || "").split(":")[0]}`;
-  document.getElementById("top-stage").textContent = stage.compName;
-  document.getElementById("top-budget").textContent = "$" + team.budget.toLocaleString();
-  document.getElementById("top-points").textContent = `${team.points} pts • Conf. ${GameState.manager.confidence}%`;
-
-  renderOffice();
-  renderCompetitionView();
-  renderSquadAndCoach();
-  renderAcademy();
-  renderMarket();
-  renderNationalTab();
-  renderCareerTab();
-  renderAwardsAndTrophies();
-  populateEditorTeams();
+function formatClock(sec) {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${s < 10 ? "0" : ""}${s}`;
 }
 
-// SISTEMA SUIZO Y LLAVES
+// FASE SUIZA Y LLAVES ELIMINATORIAS
 function initSwissForCurrentEvent() {
   const userTeam = getUserTeam();
-  const stage = InitialData.seasonSchedule[GameState.scheduleIndex];
-  let pool = [];
-
-  if (stage.compId === "rlcs_regional") {
-    pool = GameState.teams.filter(t => t.region === userTeam.region && t.division === userTeam.division);
-  } else {
-    pool = [...GameState.teams].sort((a, b) => b.points - a.points || getTeamOvr(b.id) - getTeamOvr(a.id)).slice(0, 8);
-  }
-
-  while (pool.length < 8) {
-    const extra = GameState.teams.find(t => !pool.includes(t));
-    if (extra) pool.push(extra);
-    else break;
-  }
-  if (!pool.some(t => t.id === userTeam.id)) pool[pool.length - 1] = userTeam;
-
-  GameState.swissStandings = pool.map(t => ({
-    teamId: t.id,
-    teamName: t.name,
-    tag: t.tag,
-    w: 0,
-    l: 0
-  }));
+  const sameDiv = GameState.teams.filter(t => t.region === userTeam.region && t.division === userTeam.division && t.id !== userTeam.id);
+  const pool = [userTeam, ...sameDiv.slice(0, 7)];
+  GameState.swissStandings = pool.map(t => ({ teamId: t.id, teamName: t.name, w: 0, l: 0 }));
 }
 
 function updateSwissStandings(userWon, oppId) {
-  const userId = GameState.userTeamId;
-  GameState.swissStandings.forEach(row => {
-    if (row.teamId === userId) {
-      if (userWon) row.w++; else row.l++;
-    } else if (row.teamId === oppId) {
-      if (!userWon) row.w++; else row.l++;
-    } else {
-      if (row.w < 3 && row.l < 3) {
-        if (Math.random() > 0.5) row.w++; else row.l++;
-      }
+  const uRow = GameState.swissStandings.find(r => r.teamId === GameState.userTeamId);
+  const oRow = GameState.swissStandings.find(r => r.teamId === oppId);
+  if (uRow) { if (userWon) uRow.w++; else uRow.l++; }
+  if (oRow) { if (!userWon) oRow.w++; else oRow.l++; }
+
+  GameState.swissStandings.forEach(r => {
+    if (r.teamId !== GameState.userTeamId && r.teamId !== oppId && r.w + r.l < 3) {
+      if (Math.random() > 0.5) r.w++; else r.l++;
     }
   });
   GameState.swissStandings.sort((a, b) => b.w - a.w || a.l - b.l);
 }
 
 function generateTournamentBracket() {
-  const top8Ids = GameState.swissStandings.map(s => s.teamId);
-  let pool = top8Ids.map(id => getTeamById(id)).filter(Boolean);
-  while (pool.length < 8) {
-    const extra = GameState.teams.find(t => !pool.includes(t));
-    if (extra) pool.push(extra); else break;
-  }
-  const stage = InitialData.seasonSchedule[GameState.scheduleIndex];
+  const stage = InitialData.seasonSchedule[GameState.scheduleIndex] || InitialData.seasonSchedule[0];
+  const userTeam = getUserTeam();
+  const opp = getTeamById(GameState.currentOpponentId) || GameState.teams.find(t => t.id !== userTeam.id);
+  const others = GameState.teams.filter(t => t.id !== userTeam.id && t.id !== opp.id);
+
+  const qf = [
+    { home: userTeam, away: opp, scoreH: "-", scoreA: "-", winner: null },
+    { home: others[0] || opp, away: others[1] || userTeam, scoreH: "-", scoreA: "-", winner: null },
+    { home: others[2] || opp, away: others[3] || userTeam, scoreH: "-", scoreA: "-", winner: null },
+    { home: others[4] || opp, away: others[5] || userTeam, scoreH: "-", scoreA: "-", winner: null }
+  ];
   GameState.currentBracket = {
     compName: stage.compName,
-    qf: [
-      { home: pool[0], away: pool[7], scoreH: "-", scoreA: "-" },
-      { home: pool[3], away: pool[4], scoreH: "-", scoreA: "-" },
-      { home: pool[1], away: pool[6], scoreH: "-", scoreA: "-" },
-      { home: pool[2], away: pool[5], scoreH: "-", scoreA: "-" }
-    ],
-    sf: [{ home: null, away: null, scoreH: "-", scoreA: "-" }, { home: null, away: null, scoreH: "-", scoreA: "-" }],
-    gf: [{ home: null, away: null, scoreH: "-", scoreA: "-" }]
+    qf,
+    sf: [{ home: null, away: null, scoreH: "-", scoreA: "-", winner: null }, { home: null, away: null, scoreH: "-", scoreA: "-", winner: null }],
+    gf: [{ home: null, away: null, scoreH: "-", scoreA: "-", winner: null }]
   };
 }
 
-function updateBracketProgress(userWon, oppTeam, homeWins, awayWins) {
-  const userTeam = getUserTeam();
+function updateBracketProgress(userWon, opp, hWins, aWins) {
   const b = GameState.currentBracket;
-  const stage = InitialData.seasonSchedule[GameState.scheduleIndex];
-
-  if (stage.stageType === "QF") {
-    b.qf.forEach((m, idx) => {
-      if (m.home.id === userTeam.id || m.away.id === userTeam.id) {
-        m.scoreH = m.home.id === userTeam.id ? homeWins : awayWins;
-        m.scoreA = m.away.id === userTeam.id ? homeWins : awayWins;
-      } else {
-        const hWin = getTeamOvr(m.home.id) + Math.random() * 6 > getTeamOvr(m.away.id) + Math.random() * 6;
-        m.scoreH = hWin ? 4 : Math.floor(Math.random() * 3);
-        m.scoreA = hWin ? Math.floor(Math.random() * 3) : 4;
-      }
-      const winner = m.scoreH > m.scoreA ? m.home : m.away;
-      if (idx === 0) b.sf[0].home = winner;
-      else if (idx === 1) b.sf[0].away = winner;
-      else if (idx === 2) b.sf[1].home = winner;
-      else b.sf[1].away = winner;
-    });
-  } else if (stage.stageType === "SF") {
-    b.sf.forEach((m, idx) => {
-      if (!m.home || !m.away) return;
-      if (m.home.id === userTeam.id || m.away.id === userTeam.id) {
-        m.scoreH = m.home.id === userTeam.id ? homeWins : awayWins;
-        m.scoreA = m.away.id === userTeam.id ? homeWins : awayWins;
-      } else {
-        const hWin = getTeamOvr(m.home.id) + Math.random() * 6 > getTeamOvr(m.away.id) + Math.random() * 6;
-        m.scoreH = hWin ? 4 : Math.floor(Math.random() * 3);
-        m.scoreA = hWin ? Math.floor(Math.random() * 3) : 4;
-      }
-      const winner = m.scoreH > m.scoreA ? m.home : m.away;
-      if (idx === 0) b.gf[0].home = winner;
-      else b.gf[0].away = winner;
-    });
-  } else if (stage.stageType === "GF") {
-    b.gf[0].home = userTeam;
-    b.gf[0].away = oppTeam;
-    b.gf[0].scoreH = homeWins;
-    b.gf[0].scoreA = awayWins;
-  }
-}
-
-// 1. OFICINA Y PREPARACIÓN SEMANAL
-function applyWeeklyPrep(type) {
-  if (GameState.weeklyPrepDone) return alert("Ya elegiste la preparación semanal para esta serie.");
   const userTeam = getUserTeam();
-  const starters = getTeamRoster(userTeam.id, true);
-  GameState.weeklyPrepDone = true;
+  const winner = userWon ? userTeam : opp;
 
-  if (type === "SCRIMS") {
-    GameState.prepBonus = { ovr: 2, chem: 0 };
-    starters.forEach(p => p.stamina = Math.max(20, (p.stamina ?? 100) - 12));
-    addNews("🔥 Semana de Scrims intensos contra equipos Top (+2 OVR para el próximo partido).");
-  } else if (type === "TACTICS") {
-    GameState.prepBonus = { ovr: 0, chem: 4 };
-    starters.forEach(p => p.stamina = Math.max(25, (p.stamina ?? 100) - 4));
-    addNews("🧠 Análisis táctico y revisión de replays (+4 Química para la serie).");
-  } else if (type === "REST") {
-    GameState.prepBonus = { ovr: 0, chem: 0 };
-    const mediaGain = 8000 + ((GameState.facilities?.marketing || 1) - 1) * 4000;
-    userTeam.budget += mediaGain;
-    starters.forEach(p => p.stamina = Math.min(100, (p.stamina ?? 100) + 22));
-    addNews(`🔋 Descanso y Media Day (+22% Energía y +$${mediaGain.toLocaleString()} de sponsors).`);
+  if (b.qf && b.qf[0]) {
+    b.qf[0].scoreH = hWins; b.qf[0].scoreA = aWins; b.qf[0].winner = winner;
+    b.qf.slice(1).forEach(m => {
+      const w = (getTeamOvr(m.home.id) + Math.random() * 6) >= (getTeamOvr(m.away.id) + Math.random() * 6) ? m.home : m.away;
+      m.scoreH = 3; m.scoreA = Math.floor(Math.random() * 2) + 1; m.winner = w;
+    });
+    b.sf[0].home = b.qf[0].winner;
+    b.sf[0].away = b.qf[1].winner;
+    b.sf[1].home = b.qf[2].winner;
+    b.sf[1].away = b.qf[3].winner;
   }
-  refreshAllUI();
+
+  if (b.sf && b.sf[0] && b.sf[0].home && b.sf[0].away) {
+    if (b.sf[0].home.id === userTeam.id || b.sf[0].away.id === userTeam.id) {
+      b.sf[0].scoreH = hWins; b.sf[0].scoreA = aWins; b.sf[0].winner = winner;
+    }
+    if (b.sf[1].home && b.sf[1].away) {
+      const w2 = (getTeamOvr(b.sf[1].home.id) + Math.random() * 5) >= (getTeamOvr(b.sf[1].away.id) + Math.random() * 5) ? b.sf[1].home : b.sf[1].away;
+      b.sf[1].scoreH = 4; b.sf[1].scoreA = 2; b.sf[1].winner = w2;
+    }
+    if (b.sf[0].winner && b.sf[1].winner) {
+      b.gf[0].home = b.sf[0].winner;
+      b.gf[0].away = b.sf[1].winner;
+    }
+  }
 }
 
 function pickNextOpponent() {
   const userTeam = getUserTeam();
-  const stage = InitialData.seasonSchedule[GameState.scheduleIndex];
-  let pool = stage.compId === "rlcs_regional"
-    ? GameState.teams.filter(t => t.region === userTeam.region && t.division === userTeam.division && t.id !== userTeam.id)
-    : GameState.teams.filter(t => t.id !== userTeam.id);
+  const stage = InitialData.seasonSchedule[GameState.scheduleIndex] || InitialData.seasonSchedule[0];
+  let pool = [];
 
-  if (pool.length === 0) pool = GameState.teams.filter(t => t.id !== userTeam.id);
-  const opp = pool[Math.floor(Math.random() * pool.length)];
-  GameState.currentOpponentId = opp.id;
+  if (stage.compId === "rlcs_regional") {
+    pool = GameState.teams.filter(t => t.id !== userTeam.id && t.region === userTeam.region && t.division === userTeam.division);
+  } else if (stage.compId === "rlcs_worlds" || stage.compId === "ewc") {
+    pool = [...GameState.teams.filter(t => t.id !== userTeam.id && t.division === "PRO")].sort((a, b) => b.rep - a.rep).slice(0, 8);
+  } else {
+    pool = GameState.teams.filter(t => t.id !== userTeam.id && t.division === "PRO");
+  }
+
+  if (!pool.length) pool = GameState.teams.filter(t => t.id !== userTeam.id);
+  const chosen = pool[Math.floor(Math.random() * pool.length)];
+  GameState.currentOpponentId = chosen.id;
 }
 
-function buyLanBootcamp() {
+// REFRESH GENERAL DE UI
+function refreshAllUI() {
   const userTeam = getUserTeam();
-  if (userTeam.budget < 35000) return alert("Necesitás $35,000 para organizar un Bootcamp.");
-  userTeam.budget -= 35000;
-  GameState.bootcampActive = true;
-  addNews(`✈️ ${userTeam.name} completó un Bootcamp intensivo previo al evento LAN (+2 OVR y +3 Química).`);
+  const opp = getTeamById(GameState.currentOpponentId);
+  const stage = InitialData.seasonSchedule[GameState.scheduleIndex] || InitialData.seasonSchedule[InitialData.seasonSchedule.length - 1];
+  const ovr = getTeamOvr(userTeam.id);
+  const chem = getTeamChemistry(userTeam.id);
+
+  document.getElementById("hud-crest").innerHTML = Graphics.renderCrest(userTeam, 48);
+  document.getElementById("hud-team-name").textContent = userTeam.name;
+  document.getElementById("hud-team-meta").textContent = `${userTeam.region} • ${userTeam.division} • ${userTeam.car || "Fennec"}`;
+  document.getElementById("hud-season").textContent = GameState.season;
+  document.getElementById("hud-budget").textContent = `$${userTeam.budget.toLocaleString()}`;
+  document.getElementById("hud-points").textContent = `${userTeam.points} pts`;
+  document.getElementById("hud-chem-ovr").textContent = `${chem}% / ${ovr}`;
+  document.getElementById("hud-manager-info").textContent = `${GameState.manager.name} (${GameState.manager.rep})`;
+
+  document.getElementById("hud-meta-patch").textContent = GameState.metaPatch;
+  document.getElementById("hud-next-event").textContent = `${stage.compName} — ${stage.roundName}`;
+
+  document.getElementById("match-stage-title").textContent = `${stage.compName} — ${stage.roundName}`;
+  document.getElementById("match-format-badge").textContent = stage.format === "Bo7" ? "Al Mejor de 7 (Bo7)" : "Al Mejor de 5 (Bo5)";
+  document.getElementById("match-home-crest").innerHTML = Graphics.renderCrest(userTeam, 68);
+  document.getElementById("match-home-name").textContent = userTeam.name;
+  document.getElementById("match-home-ovr").textContent = `OVR ${ovr} • ${userTeam.car || "Fennec"}`;
+
+  if (opp) {
+    const h2h = GameState.headToHead[opp.id] || { w: 0, l: 0 };
+    const awayCrestEl = document.getElementById("match-away-crest");
+    awayCrestEl.innerHTML = Graphics.renderCrest(opp, 68);
+    awayCrestEl.onclick = () => openClubDetailModal(opp.id);
+    document.getElementById("match-away-name").innerHTML = `<span class="clickable-link" onclick="openClubDetailModal('${opp.id}')">${opp.name}</span>`;
+    document.getElementById("match-away-ovr").textContent = `OVR ${getTeamOvr(opp.id)} • ${opp.car || "Octane"}`;
+    document.getElementById("match-h2h-label").textContent = `Historial vs Rival: ${h2h.w}V - ${h2h.l}D`;
+  }
+
+  const mult = userTeam.division === "CHALLENGER" && stage.compId === "rlcs_regional" ? 0.55 : 1;
+  document.getElementById("match-prize-label").textContent = `Premio: +$${Math.round(stage.prize * mult).toLocaleString()} | +${stage.points} pts`;
+
+  updateWeeklyPrepUI();
+  renderDynamicEventsBanner();
+
+  document.getElementById("news-feed").innerHTML = GameState.news.map(n => `
+    <div class="news-item ${n.type}">
+      <small class="muted">[${n.time}]</small> ${n.text}
+    </div>
+  `).join("");
+}
+
+function updateWeeklyPrepUI() {
+  const done = GameState.weeklyPrepDone;
+  document.getElementById("prep-status-badge").textContent = done ? "Preparación Completada" : "Disponible";
+  ["btn-prep-scrims", "btn-prep-bootcamp", "btn-prep-rest", "btn-prep-media"].forEach(id => {
+    document.getElementById(id).disabled = done;
+  });
+}
+
+function doWeeklyPrep(type) {
+  if (GameState.weeklyPrepDone) return;
+  const userTeam = getUserTeam();
+  const starters = getTeamRoster(userTeam.id, true);
+
+  if (type === "SCRIMS") {
+    GameState.prepBonus.ovr += 2;
+    GameState.prepBonus.chem += 2;
+    addNews(`⚡ Scrims Tácticos completados: +2 OVR y +2% Química para la serie.`);
+  } else if (type === "BOOTCAMP") {
+    if (userTeam.budget < 18000) return alert("Necesitás $18,000 para el Bootcamp.");
+    userTeam.budget -= 18000;
+    GameState.prepBonus.ovr += 3;
+    GameState.bootcampActive = true;
+    addNews(`🏋️ Bootcamp Intensivo (-$18,000): +3 OVR para esta serie y +1.5 OVR el resto de la temporada.`);
+  } else if (type === "REST") {
+    starters.forEach(p => p.stamina = Math.min(100, (p.stamina ?? 100) + 20));
+    addNews(`🛌 Descanso Mental: los titulares recuperaron +20% de energía.`);
+  } else if (type === "MEDIA") {
+    const extra = ((GameState.facilities?.marketing || 1) - 1) * 4000;
+    const total = 15000 + extra;
+    userTeam.budget += total;
+    addNews(`📺 Media Day: ingresos por visibilidad de marca (+$${total.toLocaleString()}).`);
+  }
+
+  GameState.weeklyPrepDone = true;
   refreshAllUI();
 }
 
-function renderOffice() {
-  const userTeam = getUserTeam();
-  const opp = getTeamById(GameState.currentOpponentId) || GameState.teams[0];
-  const stage = InitialData.seasonSchedule[GameState.scheduleIndex];
-  const mySwiss = GameState.swissStandings.find(s => s.teamId === userTeam.id);
+function renderDynamicEventsBanner() {
+  const banner = document.getElementById("dynamic-events-banner");
+  let html = "";
 
-  const compDisplay = (stage.compId === "rlcs_regional" && userTeam.division === "CHALLENGER")
-    ? stage.compName.replace("Open Regional", "Challenger League Split")
-    : stage.compName;
-
-  document.getElementById("next-event-title").textContent = compDisplay;
-  document.getElementById("next-round-subtitle").textContent = `${stage.roundName}${mySwiss && stage.stageType.includes("SWISS") ? ` (Tu Récord: ${mySwiss.w}W-${mySwiss.l}L)` : ""} • ${stage.format}`;
-  document.getElementById("next-event-trophy").innerHTML = Graphics.renderTrophy(userTeam.division === "CHALLENGER" && stage.compId === "rlcs_regional" ? "challenger_cup" : stage.compId, 44);
-  document.getElementById("prep-status-text").textContent = GameState.weeklyPrepDone ? "✅ Completada" : "Pendiente (Elegí una)";
-
-  const h2h = GameState.headToHead[opp.id] || { w: 0, l: 0 };
-  const rivBanner = document.getElementById("rivalry-banner");
-  if (h2h.w + h2h.l >= 3) {
-    rivBanner.classList.remove("hidden");
-    rivBanner.textContent = `🔥 RIVALIDAD HISTÓRICA (EL CLÁSICO) • Historial vs ${opp.name}: ${h2h.w}V - ${h2h.l}D`;
-  } else {
-    rivBanner.classList.add("hidden");
-  }
-
-  const isLan = stage.compId !== "rlcs_regional";
-  const campBanner = document.getElementById("bootcamp-banner");
-  if (isLan && !GameState.bootcampActive) campBanner.classList.remove("hidden");
-  else campBanner.classList.add("hidden");
-
-  document.getElementById("next-match-box").innerHTML = `
-    <div class="vs-team clickable-link" onclick="openClubDetailModal('${userTeam.id}')">
-      ${Graphics.renderCrest(userTeam, 64)}
-      <strong>${userTeam.name}</strong>
-      <span class="badge">OVR ${getTeamOvr(userTeam.id)} • ${userTeam.car || "Fennec"}</span>
-    </div>
-    <div class="vs-center">
-      <div class="vs-badge">VS</div>
-      <div class="muted">Premio: $${stage.prize.toLocaleString()}</div>
-    </div>
-    <div class="vs-team clickable-link" onclick="openClubDetailModal('${opp.id}')">
-      ${Graphics.renderCrest(opp, 64)}
-      <strong>${opp.name}</strong>
-      <span class="badge">OVR ${getTeamOvr(opp.id)} • ${opp.car || "Octane"}</span>
-    </div>
-  `;
-
-  const jobBox = document.getElementById("job-offer-box");
-  if (GameState.pendingJobOffer) {
-    const j = GameState.pendingJobOffer;
-    jobBox.innerHTML = `
-      <div class="offer-alert" style="border-color:#38bdf8;background:rgba(56,189,248,0.14);">
-        <strong>👔 ¡OFERTA DE BANQUILLO!</strong> <strong>${j.teamName} (${j.region})</strong> quiere contratarte como su nuevo Mánager.
-        <div style="display:flex;gap:8px;margin-top:8px;">
-          <button class="btn-primary btn-sm" onclick="acceptJobOffer('${j.teamId}')">Aceptar y Mudarse</button>
-          <button class="btn-secondary btn-sm" onclick="GameState.pendingJobOffer=null;refreshAllUI();">Quedarse en ${userTeam.tag}</button>
-        </div>
-      </div>
-    `;
-  } else if (GameState.pendingNationalOffer) {
-    const n = GameState.pendingNationalOffer;
-    jobBox.innerHTML = `
-      <div class="offer-alert" style="border-color:#facc15;background:rgba(250,204,21,0.14);">
-        <strong>🌍 ¡FEDERACIÓN NACIONAL!</strong> La <strong>${n.name}</strong> te ofrece ser su Seleccionador Nacional para la FIFAe World Cup (sin dejar tu club).
-        <div style="display:flex;gap:8px;margin-top:8px;">
-          <button class="btn-warning btn-sm" onclick="acceptNationalOffer('${n.code}')">Aceptar Selección</button>
+  if (GameState.pendingNationalOffer) {
+    const fed = GameState.pendingNationalOffer;
+    html += `
+      <div class="event-alert" style="border-color:#10b981;background:rgba(16,185,129,0.12);">
+        <div>🌍 <strong>¡OFERTA DE SELECCIÓN NACIONAL!</strong> La <strong>${fed.name}</strong> quiere que seas su DT en la FIFAe World Cup.</div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-success btn-sm" onclick="acceptNationalOffer('${fed.code}')">Aceptar Selección</button>
           <button class="btn-secondary btn-sm" onclick="GameState.pendingNationalOffer=null;refreshAllUI();">Rechazar</button>
         </div>
       </div>
     `;
-  } else {
-    jobBox.innerHTML = "";
   }
 
-  const lockerBox = document.getElementById("locker-event-box");
+  if (GameState.incomingOffer) {
+    const off = GameState.incomingOffer;
+    html += `
+      <div class="event-alert">
+        <div>📩 <strong>Oferta de Traspaso:</strong> <strong>${off.buyerName}</strong> ofrece <span class="money">$${off.amount.toLocaleString()}</span> por <strong>${off.playerName}</strong>.</div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-success btn-sm" onclick="acceptIncomingOffer()">Aceptar Venta</button>
+          <button class="btn-danger-outline btn-sm" onclick="rejectIncomingOffer()">Rechazar</button>
+        </div>
+      </div>
+    `;
+  }
+
   if (GameState.lockerEvent) {
     const ev = GameState.lockerEvent;
-    lockerBox.innerHTML = `
-      <div class="offer-alert" style="border-color:var(--accent);background:rgba(245,158,11,0.12);">
-        <strong>🎙️ VESTUARIO / CRISIS:</strong> ${ev.text}
-        <div style="display:flex;gap:8px;margin-top:8px;">
+    html += `
+      <div class="event-alert">
+        <div>🔥 <strong>Vestuario:</strong> ${ev.text}</div>
+        <div style="display:flex;gap:8px;">
           <button class="btn-warning btn-sm" onclick="resolveLockerEvent(true)">${ev.yesLabel}</button>
           <button class="btn-secondary btn-sm" onclick="resolveLockerEvent(false)">${ev.noLabel}</button>
         </div>
       </div>
     `;
-  } else {
-    lockerBox.innerHTML = "";
   }
 
-  const offerBox = document.getElementById("incoming-offer-box");
-  if (GameState.incomingOffer) {
-    const o = GameState.incomingOffer;
-    offerBox.innerHTML = `
-      <div class="offer-alert">
-        <strong>📩 ¡OFERTA RECIBIDA!</strong> <strong>${o.buyerName}</strong> ofrece <strong>$${o.amount.toLocaleString()}</strong> por <strong>${o.playerName}</strong>.
-        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
-          <button class="btn-success btn-sm" onclick="respondIncomingOffer('ACCEPT')">Aceptar</button>
-          <button class="btn-warning btn-sm" onclick="respondIncomingOffer('COUNTER')">Pedir +20%</button>
-          <button class="btn-danger-outline btn-sm" onclick="respondIncomingOffer('REJECT')">Rechazar</button>
+  if (GameState.pendingJobOffer) {
+    const job = GameState.pendingJobOffer;
+    html += `
+      <div class="event-alert">
+        <div>👔 <strong>Oferta de Otro Club:</strong> <strong>${job.teamName}</strong> (${job.region}) te ofrece dirigir su proyecto.</div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-primary btn-sm" onclick="acceptJobOffer('${job.teamId}')">Cambiar de Club</button>
+          <button class="btn-secondary btn-sm" onclick="GameState.pendingJobOffer=null;refreshAllUI();">Quedarme</button>
         </div>
       </div>
     `;
-  } else {
-    offerBox.innerHTML = "";
   }
 
-  document.getElementById("news-feed").innerHTML = GameState.news.map(n => `
-    <div class="news-item ${n.type}">
-      <small class="muted">[Temp. ${n.season}]</small> ${n.text}
-    </div>
-  `).join("");
+  banner.innerHTML = html;
+}
+
+function acceptIncomingOffer() {
+  const off = GameState.incomingOffer;
+  if (!off) return;
+  const userTeam = getUserTeam();
+  const buyer = getTeamById(off.buyerId);
+  const player = GameState.players.find(p => p.id === off.playerId);
+  if (!player || getTeamRoster(userTeam.id, false).length <= 3) {
+    alert("No podés vender más jugadores: necesitás al menos 3 en el club.");
+    GameState.incomingOffer = null;
+    refreshAllUI();
+    return;
+  }
+
+  userTeam.budget += off.amount;
+  if (buyer) buyer.budget = Math.max(50000, buyer.budget - off.amount);
+  player.teamId = off.buyerId;
+  player.starter = true;
+  if (!player.clubHistory) player.clubHistory = [];
+  player.clubHistory.push(off.buyerName);
+
+  if (off.amount > GameState.records.biggestSale.val) {
+    GameState.records.biggestSale = { name: `${player.name} a ${off.buyerName}`, val: off.amount };
+  }
+
+  addNews(`💸 Vendiste a ${player.name} a ${off.buyerName} por $${off.amount.toLocaleString()}.`);
+  GameState.incomingOffer = null;
+  refreshAllUI();
+}
+
+function rejectIncomingOffer() {
+  addNews(`Rechazaste la oferta de ${GameState.incomingOffer.buyerName} por ${GameState.incomingOffer.playerName}.`);
+  GameState.incomingOffer = null;
+  refreshAllUI();
 }
 
 function resolveLockerEvent(accepted) {
   const ev = GameState.lockerEvent;
   if (!ev) return;
   const userTeam = getUserTeam();
+  const p = GameState.players.find(pl => pl.id === ev.playerId);
+
   if (accepted) {
-    if (userTeam.budget < ev.cost) return alert("Presupuesto insuficiente.");
+    if (userTeam.budget < ev.cost) return alert("No tenés presupuesto suficiente para pagar ese bonus.");
     userTeam.budget -= ev.cost;
-    const p = GameState.players.find(pl => pl.id === ev.playerId);
-    if (p) { p.streak = 3; p.stamina = 100; }
-    addNews(`✅ ${ev.winMsg}`);
+    if (p) p.streak = Math.max(3, (p.streak || 0) + 2);
+    addNews(`🔥 ${ev.winMsg}`);
   } else {
-    addNews(`❌ ${ev.loseMsg}`);
+    addNews(`❄️ ${ev.loseMsg}`);
   }
   GameState.lockerEvent = null;
   refreshAllUI();
 }
 
-function respondIncomingOffer(action) {
-  const o = GameState.incomingOffer;
-  if (!o) return;
-  const userTeam = getUserTeam();
-  const roster = getTeamRoster(userTeam.id, false);
+// 1. MOTOR 2D REAL EN VIVO, KICKOFF Y CIERRE DE SERIE
+function resetPositionsForKickoff() {
+  if (!LiveMatch.simState) return;
+  const st = LiveMatch.simState;
+  st.ball = {
+    x: 320, y: 180,
+    vx: (Math.random() - 0.5) * 1.1,
+    vy: (Math.random() - 0.5) * 1.1,
+    aerial: false,
+    lastTouch: null,
+    prevTouch: null
+  };
 
-  if (action === "COUNTER") {
-    if (Math.random() < 0.65) {
-      o.amount = Math.round(o.amount * 1.2);
-      addNews(`💬 ${o.buyerName} aceptó tu contraoferta ($${o.amount.toLocaleString()} por ${o.playerName}).`);
-      refreshAllUI();
-      return;
+  const homeKickoff = [
+    { x: 225, y: 180 },
+    { x: 165, y: 115 },
+    { x: 75, y: 180 }
+  ];
+  const awayKickoff = [
+    { x: 415, y: 180 },
+    { x: 475, y: 245 },
+    { x: 565, y: 180 }
+  ];
+
+  let hIdx = 0, aIdx = 0;
+  st.cars.forEach(car => {
+    car.demoTimer = 0;
+    car.boost = 33;
+    if (car.isHome) {
+      const pos = homeKickoff[hIdx++] || { x: 120, y: 180 };
+      car.x = pos.x; car.y = pos.y; car.angle = 0;
     } else {
-      addNews(`❌ ${o.buyerName} retiró su oferta por ${o.playerName}.`);
-      GameState.incomingOffer = null;
-      refreshAllUI();
-      return;
+      const pos = awayKickoff[aIdx++] || { x: 520, y: 180 };
+      car.x = pos.x; car.y = pos.y; car.angle = Math.PI;
     }
-  }
-
-  if (action === "ACCEPT") {
-    if (roster.length <= 3) return alert("Necesitás mínimo 3 jugadores.");
-    const player = GameState.players.find(p => p.id === o.playerId);
-    if (player) {
-      userTeam.budget += o.amount;
-      player.teamId = o.buyerId;
-      player.starter = true;
-      if (!player.clubHistory) player.clubHistory = [];
-      player.clubHistory.push(o.buyerName);
-      if (o.amount > GameState.records.biggestSale.val) {
-        GameState.records.biggestSale = { name: `${player.name} -> ${o.buyerName}`, val: o.amount };
-      }
-      addNews(`💰 Vendiste a ${player.name} a ${o.buyerName} por $${o.amount.toLocaleString()}.`);
-    }
-  } else {
-    addNews(`Rechazaste la oferta de ${o.buyerName} por ${o.playerName}.`);
-  }
-  GameState.incomingOffer = null;
-  refreshAllUI();
-}
-
-// MOTOR DE PARTIDO 2D EN VIVO CON BOOST, DEMOLICIONES Y AERIALS
-function formatClock(sec) {
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  return `${m}:${s < 10 ? "0" : ""}${s}`;
+  });
 }
 
 function initPitchSimulationState() {
@@ -758,22 +739,26 @@ function initPitchSimulationState() {
   const cars = [];
   homeStarters.forEach((p, idx) => {
     cars.push({
-      id: p.id, name: p.name, role: p.role || "Striker", isHome: true,
-      x: 160 - idx * 35, y: 90 + idx * 90,
-      tx: 250, ty: 180, boost: 45, boosting: false, demoTimer: 0
+      id: p.id, name: p.name, ovr: p.ovr, mec: p.mec, def: p.def,
+      role: p.role || "Striker", carBody: userTeam.car || "Fennec",
+      isHome: true, slotIdx: idx,
+      x: 160, y: 180, angle: 0, boost: 33, boosting: false, demoTimer: 0
     });
   });
   awayStarters.forEach((p, idx) => {
     cars.push({
-      id: p.id, name: p.name, role: p.role || "Striker", isHome: false,
-      x: 480 + idx * 35, y: 90 + idx * 90,
-      tx: 390, ty: 180, boost: 45, boosting: false, demoTimer: 0
+      id: p.id, name: p.name, ovr: p.ovr, mec: p.mec, def: p.def,
+      role: p.role || "Striker", carBody: opp.car || "Octane",
+      isHome: false, slotIdx: idx,
+      x: 480, y: 180, angle: Math.PI, boost: 33, boosting: false, demoTimer: 0
     });
   });
 
   LiveMatch.simState = {
-    ball: { x: 320, y: 180, vx: 0, vy: 0, aerial: false },
+    ball: { x: 320, y: 180, vx: 0, vy: 0, aerial: false, lastTouch: null, prevTouch: null },
     cars,
+    goalBannerTimer: 0,
+    goalBannerText: "",
     boostPads: [
       { x: 64, y: 42, active: true, respawn: 0 },
       { x: 320, y: 38, active: true, respawn: 0 },
@@ -783,6 +768,7 @@ function initPitchSimulationState() {
       { x: 576, y: 318, active: true, respawn: 0 }
     ]
   };
+  resetPositionsForKickoff();
   renderBoostHud();
   Graphics.drawPitch2D(document.getElementById("rl-pitch-canvas"), LiveMatch.simState);
 }
@@ -798,23 +784,87 @@ function renderBoostHud() {
   `;
 }
 
+function handleRealGoalScored(scoringHome) {
+  const st = LiveMatch.simState;
+  const userTeam = getUserTeam();
+  const opp = getTeamById(GameState.currentOpponentId);
+  const timeStr = formatClock(LiveMatch.secondsLeft);
+
+  const homeCars = st.cars.filter(c => c.isHome);
+  const awayCars = st.cars.filter(c => !c.isHome);
+
+  if (scoringHome) {
+    LiveMatch.gHome++;
+    const scorerCar = (st.ball.lastTouch && st.ball.lastTouch.isHome)
+      ? st.ball.lastTouch
+      : homeCars[Math.floor(Math.random() * homeCars.length)];
+    const assisterCar = (st.ball.prevTouch && st.ball.prevTouch.isHome && st.ball.prevTouch.id !== scorerCar?.id)
+      ? st.ball.prevTouch
+      : null;
+
+    const pScorer = GameState.players.find(p => p.id === scorerCar?.id);
+    const pAssist = GameState.players.find(p => p.id === assisterCar?.id);
+    if (pScorer) { pScorer.goals++; pScorer.careerGoals = (pScorer.careerGoals || 0) + 1; }
+    if (pAssist) { pAssist.assists++; pAssist.careerAssists = (pAssist.careerAssists || 0) + 1; }
+
+    const shotType = st.ball.aerial ? "Flip Reset / Aéreo" : "Remate al Arco";
+    st.goalBannerText = `⚽ ¡GOL DE ${(scorerCar?.name || userTeam.tag).toUpperCase()}!`;
+    st.goalBannerTimer = 55;
+    logLiveEvent(`⏱️ [${timeStr}] ⚽ ¡GOLAZO DE <strong>${scorerCar?.name}</strong> (${shotType})${pAssist ? ` • Asist. ${pAssist.name}` : ""}!`);
+  } else {
+    LiveMatch.gAway++;
+    const scorerCar = (st.ball.lastTouch && !st.ball.lastTouch.isHome)
+      ? st.ball.lastTouch
+      : awayCars[Math.floor(Math.random() * awayCars.length)];
+
+    const pScorer = GameState.players.find(p => p.id === scorerCar?.id);
+    if (pScorer) { pScorer.goals++; pScorer.careerGoals = (pScorer.careerGoals || 0) + 1; }
+
+    st.goalBannerText = `⚽ GOL DE ${(scorerCar?.name || opp.tag).toUpperCase()}`;
+    st.goalBannerTimer = 55;
+    logLiveEvent(`⏱️ [${timeStr}] ⚽ Gol de <strong>${scorerCar?.name}</strong> (${opp.tag}).`);
+  }
+
+  document.getElementById("live-map-score").textContent = `${LiveMatch.gHome} - ${LiveMatch.gAway}`;
+}
+
 function stepPitchAnimation() {
   if (!LiveMatch.running || !LiveMatch.simState) return;
   const st = LiveMatch.simState;
   const ball = st.ball;
 
-  // Mover pelota con rebote en paredes
+  if (st.goalBannerTimer > 0) {
+    st.goalBannerTimer--;
+    if (st.goalBannerTimer === 0) resetPositionsForKickoff();
+    Graphics.drawPitch2D(document.getElementById("rl-pitch-canvas"), st);
+    LiveMatch.animFrameId = requestAnimationFrame(stepPitchAnimation);
+    return;
+  }
+
   ball.x += ball.vx;
   ball.y += ball.vy;
-  ball.vx *= 0.96;
-  ball.vy *= 0.96;
+  ball.vx *= 0.985;
+  ball.vy *= 0.985;
 
-  if (ball.x < 48) { ball.x = 48; ball.vx = Math.abs(ball.vx) + 1.5; }
-  if (ball.x > 592) { ball.x = 592; ball.vx = -Math.abs(ball.vx) - 1.5; }
-  if (ball.y < 30) { ball.y = 30; ball.vy = Math.abs(ball.vy) + 1.2; }
-  if (ball.y > 330) { ball.y = 330; ball.vy = -Math.abs(ball.vy) - 1.2; }
+  const inGoalMouthY = ball.y >= 136 && ball.y <= 224;
+  if (ball.x <= 36 && inGoalMouthY) {
+    handleRealGoalScored(false);
+    Graphics.drawPitch2D(document.getElementById("rl-pitch-canvas"), st);
+    LiveMatch.animFrameId = requestAnimationFrame(stepPitchAnimation);
+    return;
+  }
+  if (ball.x >= 604 && inGoalMouthY) {
+    handleRealGoalScored(true);
+    Graphics.drawPitch2D(document.getElementById("rl-pitch-canvas"), st);
+    LiveMatch.animFrameId = requestAnimationFrame(stepPitchAnimation);
+    return;
+  }
 
-  // Respawn de Boost Pads
+  if (ball.x < 45) { ball.x = 45; ball.vx = Math.abs(ball.vx) * 0.8 + 1.2; }
+  if (ball.x > 595) { ball.x = 595; ball.vx = -Math.abs(ball.vx) * 0.8 - 1.2; }
+  if (ball.y < 27) { ball.y = 27; ball.vy = Math.abs(ball.vy) * 0.8 + 1.0; }
+  if (ball.y > 333) { ball.y = 333; ball.vy = -Math.abs(ball.vy) * 0.8 - 1.0; }
+
   st.boostPads.forEach(pad => {
     if (!pad.active) {
       pad.respawn--;
@@ -822,62 +872,106 @@ function stepPitchAnimation() {
     }
   });
 
-  // Mover cada auto según rol y boost
+  const activeHome = st.cars.filter(c => c.isHome && c.demoTimer === 0);
+  const activeAway = st.cars.filter(c => !c.isHome && c.demoTimer === 0);
+  const homeFirstMan = [...activeHome].sort((a, b) => Math.hypot(a.x - ball.x, a.y - ball.y) - Math.hypot(b.x - ball.x, b.y - ball.y))[0];
+  const awayFirstMan = [...activeAway].sort((a, b) => Math.hypot(a.x - ball.x, a.y - ball.y) - Math.hypot(b.x - ball.x, b.y - ball.y))[0];
+
+  const userTeam = getUserTeam();
+  const opp = getTeamById(GameState.currentOpponentId);
+  const homeSkill = getTeamOvr(userTeam.id) + (LiveMatch.timeoutBoostActive ? 5 : 0);
+  const awaySkill = getTeamOvr(opp.id);
+
   st.cars.forEach(car => {
     if (car.demoTimer > 0) {
       car.demoTimer--;
       if (car.demoTimer === 0) {
-        car.x = car.isHome ? 70 : 570;
-        car.y = 180;
+        car.x = car.isHome ? 65 : 575;
+        car.y = car.slotIdx === 0 ? 90 : 270;
         car.boost = 33;
       }
       return;
     }
 
-    // Buscar pad de 100 boost si tiene poco
+    const isFirstMan = (car.id === homeFirstMan?.id) || (car.id === awayFirstMan?.id);
     let targetX = ball.x;
     let targetY = ball.y;
 
-    if (car.boost < 28) {
-      const availPad = st.boostPads.find(p => p.active && ((car.isHome && p.x < 350) || (!car.isHome && p.x > 290)));
-      if (availPad) {
-        targetX = availPad.x;
-        targetY = availPad.y;
+    if (isFirstMan) {
+      targetX = ball.x + (car.isHome ? -10 : 10);
+      targetY = ball.y;
+    } else if (car.boost < 26) {
+      const pad = st.boostPads.find(p => p.active && ((car.isHome && p.x <= 320) || (!car.isHome && p.x >= 320)));
+      if (pad) {
+        targetX = pad.x;
+        targetY = pad.y;
       }
-    } else if (car.role === "Third Man") {
-      targetX = car.isHome ? Math.min(340, Math.max(90, ball.x - 140)) : Math.max(300, Math.min(550, ball.x + 140));
-      targetY = 180 + (ball.y - 180) * 0.45;
     } else if (car.role === "Playmaker") {
-      targetX = ball.x + (car.isHome ? -35 : 35);
-      targetY = ball.y > 180 ? ball.y - 55 : ball.y + 55;
+      targetX = car.isHome ? Math.min(520, ball.x + 45) : Math.max(120, ball.x - 45);
+      targetY = ball.y > 180 ? 85 : 275;
+    } else {
+      targetX = car.isHome ? Math.max(85, Math.min(340, ball.x - 165)) : Math.min(555, Math.max(300, ball.x + 165));
+      targetY = 180 + (ball.y - 180) * 0.4;
     }
 
-    const dx = targetX - car.x;
-    const dy = targetY - car.y;
+    let repX = 0, repY = 0;
+    st.cars.forEach(other => {
+      if (other.id !== car.id && other.demoTimer === 0) {
+        const dxO = car.x - other.x;
+        const dyO = car.y - other.y;
+        const dO = Math.hypot(dxO, dyO);
+        if (dO > 0 && dO < 36) {
+          repX += (dxO / dO) * (36 - dO) * 0.45;
+          repY += (dyO / dO) * (36 - dO) * 0.45;
+        }
+      }
+    });
+
+    const dx = (targetX - car.x) + repX;
+    const dy = (targetY - car.y) + repY;
     const dist = Math.hypot(dx, dy) || 1;
-    car.boosting = car.boost > 15 && dist > 65;
-    const speed = car.boosting ? 3.8 : 2.3;
+    car.angle = Math.atan2(dy, dx);
 
-    car.x += (dx / dist) * speed;
-    car.y += (dy / dist) * speed;
-    if (car.boosting) car.boost = Math.max(0, car.boost - 0.45);
-    else car.boost = Math.min(100, car.boost + 0.08);
+    car.boosting = isFirstMan && car.boost > 12 && dist > 35;
+    const baseSpeed = car.isHome ? (2.3 + (homeSkill - 80) * 0.04) : (2.3 + (awaySkill - 80) * 0.04);
+    const speed = car.boosting ? baseSpeed * 1.48 : baseSpeed;
 
-    // Recoger Big Boost Pad
+    car.x = Math.max(46, Math.min(594, car.x + (dx / dist) * speed));
+    car.y = Math.max(28, Math.min(332, car.y + (dy / dist) * speed));
+
+    if (car.boosting) car.boost = Math.max(0, car.boost - 0.38);
+    else car.boost = Math.min(100, car.boost + 0.06);
+
     st.boostPads.forEach(pad => {
       if (pad.active && Math.hypot(car.x - pad.x, car.y - pad.y) < 18) {
         pad.active = false;
-        pad.respawn = 120;
+        pad.respawn = 130;
         car.boost = 100;
       }
     });
 
-    // Golpear pelota
-    if (Math.hypot(car.x - ball.x, car.y - ball.y) < 19) {
-      const dir = car.isHome ? 1 : -1;
-      ball.vx = dir * (4.5 + Math.random() * 4);
-      ball.vy = (Math.random() - 0.5) * 6;
-      ball.aerial = Math.random() > 0.65;
+    if (Math.hypot(car.x - ball.x, car.y - ball.y) < 18) {
+      if (st.ball.lastTouch?.id !== car.id) {
+        st.ball.prevTouch = st.ball.lastTouch;
+        st.ball.lastTouch = car;
+      }
+
+      const goalX = car.isHome ? 612 : 28;
+      const goalY = 180 + (Math.random() - 0.5) * 68;
+      const shotAngle = Math.atan2(goalY - ball.y, goalX - ball.x);
+      const power = 5.4 + (car.mec / 100) * 2.8 + (car.boosting ? 1.5 : 0);
+
+      ball.vx = Math.cos(shotAngle) * power;
+      ball.vy = Math.sin(shotAngle) * power;
+      ball.aerial = car.boosting && Math.random() > 0.55;
+
+      if ((car.isHome && ball.x < 115) || (!car.isHome && ball.x > 525)) {
+        const pDef = GameState.players.find(p => p.id === car.id);
+        if (pDef && Math.random() > 0.45) {
+          pDef.saves++;
+          pDef.careerSaves = (pDef.careerSaves || 0) + 1;
+        }
+      }
     }
   });
 
@@ -972,7 +1066,7 @@ function startLiveMapTimer() {
   LiveMatch.animFrameId = requestAnimationFrame(stepPitchAnimation);
 
   LiveMatch.timerId = setInterval(() => {
-    const step = 12 * LiveMatch.speedMultiplier;
+    const step = 10 * LiveMatch.speedMultiplier;
     LiveMatch.secondsLeft = Math.max(0, LiveMatch.secondsLeft - step);
     document.getElementById("live-clock").textContent = formatClock(LiveMatch.secondsLeft);
 
@@ -991,59 +1085,12 @@ function startLiveMapTimer() {
 }
 
 function simulateTickEvent(secLeft) {
-  const userTeam = getUserTeam();
-  const opp = getTeamById(GameState.currentOpponentId);
-  const stage = InitialData.seasonSchedule[GameState.scheduleIndex];
-  const homeStarters = getTeamRoster(userTeam.id, true);
-  const awayStarters = getTeamRoster(opp.id, true);
-  const coach = getTeamCoach(userTeam.id);
-
-  let homeOvr = getTeamOvr(userTeam.id);
-  let awayOvr = getTeamOvr(opp.id);
-  if (coach && coach.specialty.includes("Estratega LAN") && stage.compId !== "rlcs_regional") homeOvr += 3;
-  if (GameState.manager.specialty === "TACTICIAN") homeOvr += 2;
-  if (LiveMatch.timeoutBoostActive) homeOvr += 5;
-
-  const diff = homeOvr - awayOvr;
-  const homeChance = Math.min(0.84, Math.max(0.16, 0.50 + diff * 0.032));
-  const eventProb = LiveMatch.tactic === "aggressive" ? 0.17 : (LiveMatch.tactic === "defensive" ? 0.09 : 0.12);
   const timeStr = formatClock(secLeft);
-
-  // Evento de Demolición en cancha
-  if (LiveMatch.simState && Math.random() < (LiveMatch.tactic === "aggressive" ? 0.10 : 0.04)) {
+  if (LiveMatch.simState && Math.random() < (LiveMatch.tactic === "aggressive" ? 0.11 : 0.04)) {
     const victimCar = LiveMatch.simState.cars[Math.floor(Math.random() * LiveMatch.simState.cars.length)];
     if (victimCar && victimCar.demoTimer === 0) {
-      victimCar.demoTimer = 90;
+      victimCar.demoTimer = 95;
       logLiveEvent(`💥 [${timeStr}] <strong>¡DEMOLICIÓN!</strong> ${victimCar.name} explotó y queda 3s fuera de rotación.`);
-    }
-  }
-
-  if (Math.random() < eventProb) {
-    if (Math.random() < homeChance) {
-      LiveMatch.gHome++;
-      const scorer = homeStarters[Math.floor(Math.random() * homeStarters.length)];
-      const assister = homeStarters.find(p => p.id !== scorer?.id);
-      if (scorer) { scorer.goals++; scorer.careerGoals = (scorer.careerGoals || 0) + 1; }
-      if (assister && Math.random() > 0.3) { assister.assists++; assister.careerAssists = (assister.careerAssists || 0) + 1; }
-      if (LiveMatch.simState) {
-        LiveMatch.simState.ball.x = 580;
-        LiveMatch.simState.ball.y = 180;
-      }
-      document.getElementById("live-map-score").textContent = `${LiveMatch.gHome} - ${LiveMatch.gAway}`;
-      const shotType = Math.random() > 0.65 ? "Double Tap Aéreo" : (Math.random() > 0.5 ? "Flip Reset" : "Tiro Cruzado");
-      logLiveEvent(`⏱️ [${timeStr}] ⚽ ¡GOLAZO DE <strong>${scorer?.name}</strong> (${shotType})${assister ? ` • Asist. ${assister.name}` : ""}!`);
-    } else {
-      LiveMatch.gAway++;
-      const scorer = awayStarters[Math.floor(Math.random() * awayStarters.length)];
-      const keeper = homeStarters.find(p => p.role === "Third Man") || homeStarters[0];
-      if (scorer) { scorer.goals++; scorer.careerGoals = (scorer.careerGoals || 0) + 1; }
-      if (keeper && Math.random() > 0.55) { keeper.saves++; keeper.careerSaves = (keeper.careerSaves || 0) + 1; }
-      if (LiveMatch.simState) {
-        LiveMatch.simState.ball.x = 60;
-        LiveMatch.simState.ball.y = 180;
-      }
-      document.getElementById("live-map-score").textContent = `${LiveMatch.gHome} - ${LiveMatch.gAway}`;
-      logLiveEvent(`⏱️ [${timeStr}] ⚽ Gol de <strong>${scorer?.name}</strong> (${opp.tag}).`);
     }
   }
 }
@@ -1070,10 +1117,25 @@ function triggerZeroSecondPlay(allIn) {
 
 function skipCurrentLiveMap() {
   if (!LiveMatch.running) return;
-  while (LiveMatch.secondsLeft > 0) {
-    LiveMatch.secondsLeft = Math.max(0, LiveMatch.secondsLeft - 24);
-    simulateTickEvent(LiveMatch.secondsLeft);
+  const userTeam = getUserTeam();
+  const opp = getTeamById(GameState.currentOpponentId);
+  const homeStarters = getTeamRoster(userTeam.id, true);
+  const awayStarters = getTeamRoster(opp.id, true);
+  const chance = Math.min(0.84, Math.max(0.16, 0.50 + (getTeamOvr(userTeam.id) - getTeamOvr(opp.id)) * 0.032));
+
+  const extraGoals = Math.floor(Math.random() * 3) + 1;
+  for (let i = 0; i < extraGoals; i++) {
+    if (Math.random() < chance) {
+      LiveMatch.gHome++;
+      const sc = homeStarters[Math.floor(Math.random() * homeStarters.length)];
+      if (sc) { sc.goals++; sc.careerGoals = (sc.careerGoals || 0) + 1; }
+    } else {
+      LiveMatch.gAway++;
+      const sc = awayStarters[Math.floor(Math.random() * awayStarters.length)];
+      if (sc) { sc.goals++; sc.careerGoals = (sc.careerGoals || 0) + 1; }
+    }
   }
+  LiveMatch.secondsLeft = 0;
   finishCurrentLiveMap();
 }
 
@@ -1085,48 +1147,59 @@ function finishCurrentLiveMap() {
   document.getElementById("btn-skip-map").classList.add("hidden");
   document.getElementById("zero-second-alert").classList.add("hidden");
 
-  const userTeam = getUserTeam();
-  const opp = getTeamById(GameState.currentOpponentId);
-  const homeStarters = getTeamRoster(userTeam.id, true);
-
-  let otText = "";
   if (LiveMatch.gHome === LiveMatch.gAway) {
-    otText = " +OT";
+    const userTeam = getUserTeam();
+    const opp = getTeamById(GameState.currentOpponentId);
+    const homeStarters = getTeamRoster(userTeam.id, true);
+    const awayStarters = getTeamRoster(opp.id, true);
     const chance = Math.min(0.82, Math.max(0.18, 0.50 + (getTeamOvr(userTeam.id) - getTeamOvr(opp.id)) * 0.03));
     if (Math.random() < chance) {
       LiveMatch.gHome++;
-      if (homeStarters[0]) { homeStarters[0].goals++; homeStarters[0].careerGoals = (homeStarters[0].careerGoals || 0) + 1; }
-      logLiveEvent(`🔥 <strong>¡GOL DE ORO EN OVERTIME DE ${homeStarters[0]?.name}!</strong>`);
+      const sc = homeStarters[Math.floor(Math.random() * homeStarters.length)];
+      if (sc) { sc.goals++; sc.careerGoals = (sc.careerGoals || 0) + 1; }
+      logLiveEvent(`⚡ <strong>[OVERTIME]</strong> ¡Gol de oro de <strong>${sc?.name}</strong>!`);
     } else {
       LiveMatch.gAway++;
-      logLiveEvent(`💔 Gol de oro en Overtime para ${opp.tag}.`);
+      const sc = awayStarters[Math.floor(Math.random() * awayStarters.length)];
+      if (sc) { sc.goals++; sc.careerGoals = (sc.careerGoals || 0) + 1; }
+      logLiveEvent(`⚡ <strong>[OVERTIME]</strong> Gol de oro rival anotado por <strong>${sc?.name}</strong>.`);
     }
+    document.getElementById("live-map-score").textContent = `${LiveMatch.gHome} - ${LiveMatch.gAway}`;
   }
 
-  if (LiveMatch.gHome > LiveMatch.gAway) LiveMatch.homeWins++;
-  else LiveMatch.awayWins++;
+  const homeWonMap = LiveMatch.gHome > LiveMatch.gAway;
+  if (homeWonMap) {
+    LiveMatch.homeWins++;
+    logLiveEvent(`🏁 Final Juego ${LiveMatch.gameNum}: <strong>${LiveMatch.gHome} - ${LiveMatch.gAway}</strong> → Punto para tu equipo.`);
+  } else {
+    LiveMatch.awayWins++;
+    logLiveEvent(`🏁 Final Juego ${LiveMatch.gameNum}: <strong>${LiveMatch.gHome} - ${LiveMatch.gAway}</strong> → Punto para el rival.`);
+  }
 
   document.getElementById("live-home-series").textContent = LiveMatch.homeWins;
   document.getElementById("live-away-series").textContent = LiveMatch.awayWins;
-  document.getElementById("live-map-score").textContent = `${LiveMatch.gHome} - ${LiveMatch.gAway}`;
-  document.getElementById("live-clock").textContent = `0:00${otText}`;
 
   if (LiveMatch.homeWins >= LiveMatch.winsNeeded || LiveMatch.awayWins >= LiveMatch.winsNeeded) {
     LiveMatch.active = false;
-    logLiveEvent(`<br>🏆 <strong>SERIE FINALIZADA: ${userTeam.tag} ${LiveMatch.homeWins} - ${LiveMatch.awayWins} ${opp.tag}</strong>`);
+    logLiveEvent(`🏆 <strong>SERIE TERMINADA:</strong> ${LiveMatch.homeWins} - ${LiveMatch.awayWins}`);
+    document.getElementById("btn-play-next-map").classList.add("hidden");
     document.getElementById("btn-finish-series").classList.remove("hidden");
   } else {
     LiveMatch.gameNum++;
-    document.getElementById("live-game-label").textContent = `JUEGO ${LiveMatch.gameNum}`;
-    document.getElementById("btn-play-next-map").classList.remove("hidden");
+    const stage = InitialData.seasonSchedule[GameState.scheduleIndex];
+    document.getElementById("live-game-label").textContent = `JUEGO ${LiveMatch.gameNum} (${stage.format})`;
     document.getElementById("btn-play-next-map").textContent = `Arrancar Reloj del Juego ${LiveMatch.gameNum} (5:00)`;
+    document.getElementById("btn-play-next-map").classList.remove("hidden");
   }
 }
 
-function closeLiveSeriesPanel() {
+function closeLiveSeries() {
+  const h = LiveMatch.homeWins;
+  const a = LiveMatch.awayWins;
+  LiveMatch.active = false;
   document.getElementById("live-series-panel").classList.add("hidden");
   document.getElementById("match-controls").classList.remove("hidden");
-  finalizeSeriesResult(LiveMatch.homeWins, LiveMatch.awayWins);
+  finalizeSeriesResult(h, a);
 }
 
 function simulateSeriesInstant() {
@@ -1134,48 +1207,40 @@ function simulateSeriesInstant() {
   const opp = getTeamById(GameState.currentOpponentId);
   const stage = InitialData.seasonSchedule[GameState.scheduleIndex];
   const winsNeeded = stage.format === "Bo7" ? 4 : 3;
-
-  let h = 0, a = 0;
-  const chance = Math.min(0.85, Math.max(0.15, 0.50 + (getTeamOvr(userTeam.id) - getTeamOvr(opp.id)) * 0.035));
   const homeStarters = getTeamRoster(userTeam.id, true);
   const awayStarters = getTeamRoster(opp.id, true);
 
+  let diff = getTeamOvr(userTeam.id) - getTeamOvr(opp.id);
+  const coach = getTeamCoach(userTeam.id);
+  if (coach && coach.specialty.includes("LAN") && (stage.compId.includes("major") || stage.compId === "rlcs_worlds")) diff += 4;
+  if (coach && coach.specialty.includes("Bo5") && stage.format === "Bo5") diff += 3;
+  if (GameState.metaPatch.includes("Aéreo") && homeStarters.some(p => p.mec >= 92)) diff += 2;
+  if (GameState.metaPatch.includes("Pases") && getTeamChemistry(userTeam.id) >= 88) diff += 2;
+
+  const winProb = Math.min(0.86, Math.max(0.14, 0.50 + diff * 0.032));
+  let h = 0, a = 0;
   while (h < winsNeeded && a < winsNeeded) {
-    if (Math.random() < chance) {
+    if (Math.random() < winProb) {
       h++;
-      if (homeStarters.length) {
-        const sc = homeStarters[Math.floor(Math.random() * homeStarters.length)];
-        const as = homeStarters.find(p => p.id !== sc.id);
-        sc.goals += 2; sc.careerGoals = (sc.careerGoals || 0) + 2;
-        if (as) { as.assists += 1; as.careerAssists = (as.careerAssists || 0) + 1; }
+      const sc = homeStarters[Math.floor(Math.random() * homeStarters.length)];
+      if (sc) {
+        const g = Math.floor(Math.random() * 2) + 1;
+        sc.goals += g;
+        sc.careerGoals = (sc.careerGoals || 0) + g;
       }
     } else {
       a++;
-      if (awayStarters.length) {
-        const sc = awayStarters[Math.floor(Math.random() * awayStarters.length)];
-        sc.goals += 2; sc.careerGoals = (sc.careerGoals || 0) + 2;
+      const sc = awayStarters[Math.floor(Math.random() * awayStarters.length)];
+      if (sc) {
+        const g = Math.floor(Math.random() * 2) + 1;
+        sc.goals += g;
+        sc.careerGoals = (sc.careerGoals || 0) + g;
       }
     }
   }
   finalizeSeriesResult(h, a);
 }
 
-function openManualResultModal() {
-  const userTeam = getUserTeam();
-  const opp = getTeamById(GameState.currentOpponentId);
-  const stage = InitialData.seasonSchedule[GameState.scheduleIndex];
-  document.getElementById("manual-match-label").textContent = `${userTeam.name} vs ${opp.name} (${stage.format})`;
-  document.getElementById("manual-modal").classList.remove("hidden");
-}
-function closeManualResultModal() { document.getElementById("manual-modal").classList.add("hidden"); }
-function submitManualResult() {
-  const h = parseInt(document.getElementById("manual-score-home").value) || 0;
-  const a = parseInt(document.getElementById("manual-score-away").value) || 0;
-  closeManualResultModal();
-  finalizeSeriesResult(h, a);
-}
-
-// CIERRE DE SERIE, SIMULACIÓN MUNDIAL PARALELA Y PROGRESIÓN RLCS
 function finalizeSeriesResult(homeWins, awayWins) {
   const userTeam = getUserTeam();
   const opp = getTeamById(GameState.currentOpponentId);
@@ -1249,7 +1314,6 @@ function finalizeSeriesResult(homeWins, awayWins) {
     }
   }
 
-  // Simulación paralela de puntos RLCS en todas las regiones (EU, NA, SAM, MENA)
   GameState.teams.forEach(t => {
     if (t.id !== userTeam.id && t.id !== opp.id) {
       const ovrFactor = Math.max(0, getTeamOvr(t.id) - 74);
@@ -1420,7 +1484,6 @@ function triggerRandomClubEvents() {
     }
   }
 
-  // Oferta de Selección Nacional FIFAe
   if (!GameState.manager.nationalTeamCode && !GameState.pendingNationalOffer && GameState.manager.rep >= 85 && Math.random() < 0.25) {
     const eligible = InitialData.federations.filter(f => GameState.manager.rep >= f.minRep);
     if (eligible.length > 0) {
@@ -1442,7 +1505,6 @@ function handleEndOfSeason() {
     }
   });
 
-  // Gala de Premios Individuales
   const allActive = [...GameState.players];
   const rocketDor = [...allActive].sort((a, b) => (b.ovr * 2 + b.goals * 0.5 + b.assists * 0.4) - (a.ovr * 2 + a.goals * 0.5 + a.assists * 0.4))[0];
   const goldenBoot = [...allActive].sort((a, b) => b.goals - a.goals)[0];
@@ -1470,7 +1532,6 @@ function handleEndOfSeason() {
   `;
   document.getElementById("gala-modal").classList.remove("hidden");
 
-  // Ascensos y Descensos por Región
   ["EU", "NA", "SAM", "MENA"].forEach(reg => {
     const proTeams = GameState.teams.filter(t => t.region === reg && t.division === "PRO").sort((a, b) => b.points - a.points);
     const chalTeams = GameState.teams.filter(t => t.region === reg && t.division === "CHALLENGER").sort((a, b) => b.points - a.points);
@@ -1485,7 +1546,6 @@ function handleEndOfSeason() {
     }
   });
 
-  // Contratos, Retiros y Progresión
   const remainingPlayers = [];
   GameState.players.forEach(p => {
     p.age++;
@@ -1600,7 +1660,6 @@ function renderCompetitionView() {
   const v = GameState.selectedCompView;
   const userTeam = getUserTeam();
 
-  // Actualizar selector rápido de clubes
   const dirSelect = document.getElementById("club-directory-select");
   if (dirSelect && dirSelect.options.length <= 1) {
     GameState.teams.forEach(t => {
@@ -1770,7 +1829,6 @@ function renderCompetitionView() {
   }
 }
 
-// MODAL CLUB HUB (FICHA COMPLETA DEL CLUB AL HACER CLIC EN TABLAS)
 function openClubDetailModal(teamId) {
   const team = getTeamById(teamId);
   if (!team) return;
@@ -1853,7 +1911,6 @@ function openClubDetailModal(teamId) {
 }
 function closeClubDetailModal() { document.getElementById("club-detail-modal").classList.add("hidden"); }
 
-// MODAL FICHA INDIVIDUAL DE JUGADOR
 function openPlayerDetailModal(playerId) {
   const p = GameState.players.find(pl => pl.id === playerId);
   if (!p) return;
@@ -2062,7 +2119,6 @@ function spawnRandomWorldProspect() {
   const country = countries[Math.floor(Math.random() * countries.length)];
   const pot = Math.floor(Math.random() * (t.potMax - t.potMin + 1)) + t.potMin;
 
-  // Mayor chance en mi cantera si contraté ojeadores
   const myScoutBoost = (GameState.hiredScouts?.length || 0) * 0.1;
   const toUser = Math.random() < (0.35 + myScoutBoost);
   const randomClub = GameState.teams[Math.floor(Math.random() * GameState.teams.length)];
@@ -2741,21 +2797,21 @@ function simulateNationalLeaguesMatchday() {
 
 // GUARDADO Y CARGA
 function saveGame(showAlert) {
-  localStorage.setItem("rl_career_save_v7", JSON.stringify(GameState));
-  if (showAlert) alert("¡Carrera v7.0 guardada correctamente!");
+  localStorage.setItem("rl_career_save_v8", JSON.stringify(GameState));
+  if (showAlert) alert("¡Carrera v8.0 guardada correctamente!");
 }
 
 function loadSavedGame() {
   const raw =
+    localStorage.getItem("rl_career_save_v8") ||
     localStorage.getItem("rl_career_save_v7") ||
-    localStorage.getItem("rl_career_save_v6") ||
-    localStorage.getItem("rl_career_save_v5");
+    localStorage.getItem("rl_career_save_v6");
   if (!raw) return;
   const loaded = JSON.parse(raw);
   GameState = { ...GameState, ...loaded };
   if (!GameState.manager) GameState.manager = { name: "Tomy", country: "AR", specialty: "ACADEMY", rep: 75, confidence: 80, nationalTeamCode: null, history: [] };
   if (!GameState.facilities) GameState.facilities = { gamingHouse: 1, academy: 1, marketing: 1 };
-  if (!GameState.tacticalBoard) GameState.tacticalBoard = { style: "balanced", boostPriority: "balanced", strikerRole: "All-Round", playmakerRole: "Infield Passer", thirdManRole: "Goal-Line Anchor" };
+  if (!GameState.tacticalBoard) GameState.tacticalBoard = { style: "balanced", boostPriority: "balanced" };
   if (!GameState.hiredScouts) GameState.hiredScouts = [];
   if (!GameState.records) GameState.records = { topScorerSeason: { name: "-", val: 0 }, biggestSale: { name: "-", val: 0 }, bestStreak: 0, currentStreak: 0 };
   if (!GameState.headToHead) GameState.headToHead = {};
