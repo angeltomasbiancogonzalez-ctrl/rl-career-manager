@@ -15,7 +15,6 @@ const Graphics = {
     return this.flags[code] || "🌐";
   },
 
-  // Dibuja estrellas doradas arriba del escudo según los Mundiales RLCS ganados
   renderStarsSVG(starsCount) {
     if (!starsCount || starsCount <= 0) return "";
     const count = Math.min(starsCount, 6);
@@ -28,7 +27,6 @@ const Graphics = {
     return stars;
   },
 
-  // Escudos detallados inspirados en clubes reales + diseño custom
   renderCrest(team, size = 56) {
     if (!team) return "";
     if (team.logoUrl && team.logoUrl.trim() !== "") {
@@ -140,12 +138,13 @@ const Graphics = {
   renderTrophy(compId, size = 48) {
     const palettes = {
       rlcs_regional: { main: "#38bdf8", trim: "#0284c7", label: "RLCS" },
+      challenger_cup:{ main: "#a78bfa", trim: "#6d28d9", label: "CHAL" },
       paris_major:   { main: "#e879f9", trim: "#a21caf", label: "PARIS" },
       boston_major:  { main: "#f87171", trim: "#b91c1c", label: "BOSTON" },
+      rlcs_lcq:      { main: "#fb923c", trim: "#c2410c", label: "LCQ" },
       rlcs_worlds:   { main: "#fbbf24", trim: "#d97706", label: "WORLDS" },
       club_wc:       { main: "#34d399", trim: "#059669", label: "CWC" },
-      fifae_wc:      { main: "#facc15", trim: "#ca8a04", label: "FIFAe" },
-      ballon_dor:    { main: "#fde047", trim: "#ca8a04", label: "OR" }
+      fifae_wc:      { main: "#facc15", trim: "#ca8a04", label: "FIFAe" }
     };
     const p = palettes[compId] || palettes.rlcs_regional;
 
