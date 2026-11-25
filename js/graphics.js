@@ -129,12 +129,11 @@ const Graphics = {
     return `<span style="display:inline-block;padding:2px 7px;border-radius:6px;font-size:0.72rem;font-weight:800;background:${r.bg};color:${r.color};">${r.text}</span>`;
   },
 
-  // DIBUJO DE SILUETA DE AUTO REAL (FENNEC, OCTANE O DOMINUS)
+  // SILUETAS REALES DE AUTOS (FENNEC, OCTANE, DOMINUS)
   _drawCarBody(ctx, carType, isHome) {
     const bodyColor = isHome ? "#0284c7" : "#ea580c";
     const accentColor = isHome ? "#38bdf8" : "#fdba74";
 
-    // Ruedas negras con llanta brillante
     ctx.fillStyle = "#090d16";
     ctx.fillRect(-10, -9.5, 6, 2.5);
     ctx.fillRect(4, -9.5, 6, 2.5);
@@ -146,7 +145,6 @@ const Graphics = {
     ctx.lineWidth = 1.6;
 
     if (carType === "Dominus") {
-      // Silueta alargada estilo muscle car
       ctx.beginPath();
       ctx.roundRect(-14, -7, 28, 14, 3);
       ctx.fill();
@@ -156,7 +154,6 @@ const Graphics = {
       ctx.fillStyle = "#0f172a";
       ctx.fillRect(2, -5.5, 5, 11);
     } else if (carType === "Octane") {
-      // Silueta clásica con alerón trasero y trompa afilada
       ctx.beginPath();
       ctx.moveTo(-12, -7);
       ctx.lineTo(6, -7);
@@ -167,14 +164,11 @@ const Graphics = {
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
-      // Alerón trasero
       ctx.fillStyle = accentColor;
       ctx.fillRect(-13.5, -7.5, 3, 15);
-      // Cabina
       ctx.fillStyle = "#0f172a";
       ctx.fillRect(0, -4.5, 5.5, 9);
     } else {
-      // Fennec (compacto hatchback con líneas agresivas)
       ctx.beginPath();
       ctx.roundRect(-12, -7.5, 24, 15, 4);
       ctx.fill();
@@ -186,13 +180,12 @@ const Graphics = {
       ctx.fillRect(2.5, -5.5, 5, 11);
     }
 
-    // Faros delanteros
     ctx.fillStyle = "#fef08a";
     ctx.fillRect(11.5, -5, 1.8, 2.5);
     ctx.fillRect(11.5, 2.5, 1.8, 2.5);
   },
 
-  // RENDERIZADOR DE LA CANCHA 2D DE ROCKET LEAGUE EN VIVO (v7.2)
+  // RENDERIZADOR DE LA CANCHA 2D EN VIVO (v8.0)
   drawPitch2D(canvas, simState) {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -200,7 +193,6 @@ const Graphics = {
     const H = canvas.height;
     const now = Date.now() * 0.005;
 
-    // Fondo césped Champions Field nocturno con iluminación de estadio
     const grad = ctx.createLinearGradient(0, 0, W, 0);
     grad.addColorStop(0, "#08162b");
     grad.addColorStop(0.5, "#0d2238");
@@ -208,20 +200,17 @@ const Graphics = {
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, H);
 
-    // Franjas de césped
     ctx.fillStyle = "rgba(255,255,255,0.025)";
     for (let x = 36; x < W - 36; x += 56) {
       ctx.fillRect(x, 18, 28, H - 36);
     }
 
-    // Perímetro exterior con borde luminoso por mitad
     ctx.lineWidth = 3;
     ctx.strokeStyle = "#0284c7";
     ctx.strokeRect(36, 18, W / 2 - 36, H - 36);
     ctx.strokeStyle = "#ea580c";
     ctx.strokeRect(W / 2, 18, W / 2 - 36, H - 36);
 
-    // Línea y círculo central
     ctx.strokeStyle = "rgba(148,163,184,0.38)";
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -233,7 +222,6 @@ const Graphics = {
     ctx.arc(W / 2, H / 2, 48, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Etiquetas sutiles de campo en el césped
     ctx.font = "900 11px sans-serif";
     ctx.textAlign = "center";
     ctx.fillStyle = "rgba(56, 189, 248, 0.25)";
@@ -254,7 +242,7 @@ const Graphics = {
     ctx.fillRect(W - 36, H / 2 - 44, 22, 88);
     ctx.strokeRect(W - 36, H / 2 - 44, 22, 88);
 
-    // 6 Big Boost Pads (100% Boost) con pulso luminoso
+    // 6 Big Boost Pads (100% Boost)
     const pads = simState?.boostPads || [
       { x: 64, y: 42, active: true }, { x: W / 2, y: 38, active: true }, { x: W - 64, y: 42, active: true },
       { x: 64, y: H - 42, active: true }, { x: W / 2, y: H - 38, active: true }, { x: W - 64, y: H - 42, active: true }
@@ -280,7 +268,7 @@ const Graphics = {
 
     if (!simState) return;
 
-    // Dibujar Autos con silueta real, estela supersonic y barra de boost
+    // Dibujar Autos con ángulo real, estela supersonic y boost
     (simState.cars || []).forEach(car => {
       if (car.demoTimer > 0) {
         ctx.beginPath();
@@ -300,7 +288,6 @@ const Graphics = {
       ctx.translate(car.x, car.y);
       ctx.rotate(angle);
 
-      // Estela Supersonic y llama de boost por detrás
       if (car.boosting && car.boost > 5) {
         const trailGrad = ctx.createLinearGradient(-12, 0, -36, 0);
         trailGrad.addColorStop(0, car.isHome ? "rgba(56, 189, 248, 0.85)" : "rgba(251, 146, 60, 0.85)");
@@ -313,7 +300,6 @@ const Graphics = {
         ctx.closePath();
         ctx.fill();
 
-        // Núcleo blanco de llama
         ctx.fillStyle = "#fef9c3";
         ctx.beginPath();
         ctx.moveTo(-12, -2.5);
@@ -323,17 +309,14 @@ const Graphics = {
         ctx.fill();
       }
 
-      // Chasis según modelo (Fennec / Octane / Dominus)
       this._drawCarBody(ctx, car.carBody || (car.isHome ? "Fennec" : "Octane"), car.isHome);
       ctx.restore();
 
-      // Barra de boost arriba del auto
       ctx.fillStyle = "rgba(2, 6, 23, 0.85)";
       ctx.fillRect(car.x - 14, car.y - 17, 28, 4);
       ctx.fillStyle = car.boost > 25 ? "#facc15" : "#ef4444";
       ctx.fillRect(car.x - 14, car.y - 17, (car.boost / 100) * 28, 4);
 
-      // Nickname nítido
       ctx.font = "bold 11px sans-serif";
       ctx.textAlign = "center";
       ctx.fillStyle = "rgba(2, 6, 23, 0.9)";
@@ -342,7 +325,7 @@ const Graphics = {
       ctx.fillText(car.name, car.x, car.y + 21);
     });
 
-    // Estela de velocidad de la pelota según último toque
+    // Estela y dibujo de la Pelota
     const ball = simState.ball || { x: W / 2, y: H / 2, vx: 0, vy: 0, aerial: false };
     const speed = Math.hypot(ball.vx || 0, ball.vy || 0);
     if (speed > 2.2) {
@@ -358,7 +341,6 @@ const Graphics = {
       ctx.stroke();
     }
 
-    // Dibujar Pelota con detalle geométrico
     const radius = ball.aerial ? 12 : 9.5;
     ctx.beginPath();
     ctx.arc(ball.x, ball.y, radius + 4, 0, Math.PI * 2);
@@ -373,14 +355,13 @@ const Graphics = {
     ctx.lineWidth = 2.5;
     ctx.stroke();
 
-    // Núcleo interno de la pelota RL
     ctx.beginPath();
     ctx.arc(ball.x, ball.y, radius * 0.45, 0, Math.PI * 2);
     ctx.strokeStyle = "#64748b";
     ctx.lineWidth = 1.2;
     ctx.stroke();
 
-    // Onda expansiva y cartel de ¡GOOOL! dentro de la cancha
+    // Onda expansiva y cartel dorado de ¡GOOOL!
     if (simState.goalBannerTimer > 0) {
       const blastRadius = (56 - simState.goalBannerTimer) * 5;
       ctx.beginPath();
