@@ -3257,3 +3257,219 @@ function simulateNationalLeaguesMatchday() {
     }
   });
 }
+
+/* ==========================================================================
+   ZONA DE PARCHES — js/engine.js
+   (Pegar siempre los nuevos parches debajo de esta línea)
+   ========================================================================== */
+
+// PARCHE #1: Cancha 2D sin trabas en paredes, nombres reales y freno al terminar mapa
+function initPitchSimulationState() {
+  let homeRoster = getTeamRoster(LiveMatch.homeTeamId, true);
+  if (homeRoster.length < 3) homeRoster = getTeamRoster(LiveMatch.homeTeamId, false).slice(0, 3);
+
+  let awayRoster = getTeamRoster(LiveMatch.awayTeamId, true);
+  if (awayRoster.length < 3) awayRoster = getTeamRoster(LiveMatch.awayTeamId, false).slice(0, 3);
+
+  const homeNames = [
+    homeRoster[0]?.name || "Local 1",
+    homeRoster[1]?.name || "Local 2",
+    homeRoster[2]?.name || "Local 3"
+  ];
+  const awayNames = [
+    awayRoster[0]?.name || "Visitante 1",
+    awayRoster[1]?.name || "Visitante 2",
+    awayRoster[2]?.name || "Visitante 3"
+  ];
+
+  LiveMatch.pitch = {
+    ball: { x: 0.5, y: 0.5, vx: 0, vy: 0, lastTouchSide: null, lastTouchPlayer: null },
+    homeCars: [
+      { id: homeRoster[0]?.id || "h1", name: homeNames[0], role: "Striker", x: 0.34, y: 0.50, vx: 0, vy: 0, angle: 0, boost: 45, speed: 0 },
+      { id: homeRoster[1]?.id || "h2", name: homeNames[1], role: "Playmaker", x: 0.24, y: 0.28, vx: 0, vy: 0, angle: 0, boost: 45, speed: 0 },
+      { id: homeRoster[2]?.id || "h3", name: homeNames[2], role: "Third Man", x: 0.15, y: 0.65, vx: 0, vy: 0, angle: 0, boost: 45, speed: 0 }
+    ],
+    awayCars: [
+      { id: awayRoster[0]?.id || "a1", name: awayNames[0], role: "Striker", x: 0.66, y: 0.50, vx: 0, vy: 0, angle: Math.PI, boost: 45, speed: 0 },
+      { id: awayRoster[1]?.id || "a2", name: awayNames[1], role: "Playmaker", x: 0.76, y: 0.72, vx: 0, vy: 0, angle: Math.PI, boost: 45, speed: 0 },
+      { id: awayRoster[2]?.id || "a3", name: awayNames[2], role: "Third Man", x: 0.85, y: 0.35, vx: 0, vy: 0, angle: Math.PI, boost: 45, speed: 0 }
+    ],
+    boostPads: createBoostPads(),
+    goalBannerTimer: 0,
+    lastScorerName: "",
+    lastScorerSide: "HOME"
+  };
+
+  resetPositionsForKickoff();
+}
+
+function stepPitchAnimation() {
+  if (!LiveMatch.active || !LiveMatch.pitch) return;
+
+  const p = LiveMatch.pitch;
+  const canvas = document.getElementById("rl-pitch-canvas");
+  const homeTeam = getTeamById(LiveMatch.homeTeamId);
+  const awayTeam = getTeamById(LiveMatch.awayTeamId);
+
+  // Congelar animación si el mapa ya terminó
+  const mapEnded = !document.getElementById("btn-next-map")?.classList.contains("hidden") ||
+                   !document.getElementById("btn-finish-series")?.classList.contains("hidden");
+  if (mapEnded) {
+    Graphics.drawPitch2D(canvas, p, homeTeam, awayTeam);
+    LiveMatch.animFrameId = requestAnimationFrame(stepPitchAnimation);
+    return;
+  }
+
+  if (p.goalBannerTimer > 0) {
+    p.goalBannerTimer -= 1;
+    if (p.goalBannerTimer === 0) resetPositionsForKickoff();
+    Graphics.drawPitch2D(canvas, p, homeTeam, awayTeam);
+    LiveMatch.animFrameId = requestAnimationFrame(stepPitchAnimation);
+    return;
+  }
+
+  if (LiveMatch.zeroSecondPending) {
+    Graphics.drawPitch2D(canvas, p, homeTeam, awayTeam);
+    LiveMatch.animFrameId = requestAnimationFrame(stepPitchAnimation);
+    return;
+  }
+
+  const dt = 0.016 * LiveMatch.speedMultiplier;
+
+  p.boostPads.forEach(pad => {
+    if (!pad.active) {
+      pad.cooldown -= dt;
+      if (pad.cooldown <= 0) pad.active = true;
+    }
+  });
+
+  const b = p.ball;
+  b.x += b.vx * dt;
+  b.y += b.vy * dt;
+  b.vx *= Math.pow(0.985, LiveMatch.speedMultiplier);
+  b.vy *= Math.pow(0.985, LiveMatch.speedMultiplier);
+
+  if (b.y < 0.09) {
+    b.y = 0.09;
+    b.vy = Math.abs(b.vy) * 0.85 + 0.08;
+  } else if (b.y > 0.91) {
+    b.y = 0.91;
+    b.vy = -Math.abs(b.vy) * 0.85 - 0.08;
+  }
+
+  const inGoalMouthY = b.y >= 0.34 && b.y <= 0.66;
+  if (b.x <= 0.04 && inGoalMouthY) {
+    const scorer = p.awayCars.find(c => c.id === b.lastTouchPlayer) || p.awayCars[0];
+    handleRealGoalScored("AWAY", scorer);
+  } else if (b.x >= 0.96 && inGoalMouthY) {
+    const scorer = p.homeCars.find(c => c.id === b.lastTouchPlayer) || p.homeCars[0];
+    handleRealGoalScored("HOME", scorer);
+  } else {
+    if (b.x < 0.06) {
+      b.x = 0.065;
+      b.vx = Math.abs(b.vx) * 0.85 + 0.14;
+      b.vy += (0.5 - b.y) * 0.45;
+    } else if (b.x > 0.94) {
+      b.x = 0.935;
+      b.vx = -Math.abs(b.vx) * 0.85 - 0.14;
+      b.vy += (0.5 - b.y) * 0.45;
+    }
+  }
+
+  const updateTeamCars = (cars, isHome) => {
+    const tacticShift = isHome
+      ? (LiveMatch.tactic === "AGGRESSIVE" ? 0.08 : LiveMatch.tactic === "DEFENSIVE" ? -0.08 : 0)
+      : 0;
+
+    cars.forEach((car, idx) => {
+      let targetX = b.x;
+      let targetY = b.y;
+
+      if (idx === 0) {
+        targetX = b.x + (isHome ? -0.015 : 0.015);
+        targetY = b.y;
+      } else if (idx === 1) {
+        targetX = Math.max(0.14, Math.min(0.86, b.x + (isHome ? -0.10 + tacticShift : 0.10)));
+        targetY = b.y < 0.5 ? Math.min(0.80, b.y + 0.18) : Math.max(0.20, b.y - 0.18);
+      } else {
+        const baseDefX = isHome ? Math.max(0.11, 0.22 + tacticShift) : 0.78;
+        targetX = (baseDefX * 0.7) + (b.x * 0.3);
+        targetY = 0.5 + (b.y - 0.5) * 0.45;
+      }
+
+      const dx = targetX - car.x;
+      const dy = targetY - car.y;
+      const dist = Math.hypot(dx, dy) || 0.001;
+      const desiredAngle = Math.atan2(dy, dx);
+
+      let diff = desiredAngle - car.angle;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      car.angle += diff * Math.min(1, 7.5 * dt);
+
+      const usingBoost = car.boost > 8 && dist > 0.14;
+      const moveSpeed = usingBoost ? 0.34 : 0.23;
+      if (usingBoost) {
+        car.boost = Math.max(0, car.boost - 14 * dt);
+      } else {
+        car.boost = Math.min(100, car.boost + 4 * dt);
+      }
+
+      car.vx = Math.cos(car.angle) * moveSpeed;
+      car.vy = Math.sin(car.angle) * moveSpeed;
+      car.speed = moveSpeed * 10;
+
+      car.x = Math.max(0.075, Math.min(0.925, car.x + car.vx * dt));
+      car.y = Math.max(0.10, Math.min(0.90, car.y + car.vy * dt));
+
+      p.boostPads.forEach(pad => {
+        if (pad.active && Math.hypot(car.x - pad.x, car.y - pad.y) < 0.038) {
+          pad.active = false;
+          pad.cooldown = pad.big ? 8 : 4;
+          car.boost = Math.min(100, car.boost + (pad.big ? 65 : 20));
+        }
+      });
+
+      const ballDist = Math.hypot(b.x - car.x, b.y - car.y);
+      if (ballDist < 0.036) {
+        const nearCorner = (b.x < 0.11 || b.x > 0.89) && (b.y < 0.32 || b.y > 0.68);
+        const goalX = nearCorner ? 0.50 : (isHome ? 0.98 : 0.02);
+        const goalY = nearCorner ? 0.50 : (0.5 + (Math.random() * 0.22 - 0.11));
+        const shotAngle = Math.atan2(goalY - b.y, goalX - b.x);
+        const shotPower = 0.44 + (Math.random() * 0.15);
+
+        b.vx = Math.cos(shotAngle) * shotPower;
+        b.vy = Math.sin(shotAngle) * shotPower;
+        b.x += Math.cos(shotAngle) * 0.028;
+        b.y += Math.sin(shotAngle) * 0.028;
+        b.lastTouchSide = isHome ? "HOME" : "AWAY";
+        b.lastTouchPlayer = car.id;
+      }
+    });
+  };
+
+  updateTeamCars(p.homeCars, true);
+  updateTeamCars(p.awayCars, false);
+
+  const allCars = [...p.homeCars, ...p.awayCars];
+  for (let i = 0; i < allCars.length; i++) {
+    for (let j = i + 1; j < allCars.length; j++) {
+      const c1 = allCars[i];
+      const c2 = allCars[j];
+      const d = Math.hypot(c2.x - c1.x, c2.y - c1.y);
+      if (d > 0 && d < 0.035) {
+        const push = (0.035 - d) * 0.5;
+        const ang = Math.atan2(c2.y - c1.y, c2.x - c1.x);
+        c1.x -= Math.cos(ang) * push;
+        c1.y -= Math.sin(ang) * push;
+        c2.x += Math.cos(ang) * push;
+        c2.y += Math.sin(ang) * push;
+      }
+    }
+  }
+
+  Graphics.drawPitch2D(canvas, p, homeTeam, awayTeam);
+  renderBoostHud();
+
+  LiveMatch.animFrameId = requestAnimationFrame(stepPitchAnimation);
+}
